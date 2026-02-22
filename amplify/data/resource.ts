@@ -1,29 +1,47 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { analyzeImage } from '../functions/analyze-image/resource'; // 関数をインポート
+import { analyzeImage } from '../functions/analyze-image/resource';
 
 const schema = a.schema({
-  // 既存のコスメモデル
+  // ── コスメ ──────────────────────────────────────────────────────
   Cosmetic: a
     .model({
-      name: a.string().required(),
-      brand: a.string(),
+      name:          a.string().required(),
+      brand:         a.string(),
       totalCapacity: a.float(),
-      unit: a.string(),
-      usagePerApp: a.float(),
+      unit:          a.string(),
+      usagePerApp:   a.float(),
+      timesPerDay:   a.float(),
       currentAmount: a.float(),
-      imageUrl: a.string(),
+      imageUrl:      a.string(),
     })
-    .authorization((allow) => [
-      allow.owner(),
-    ]),
+    .authorization((allow) => [allow.owner()]),
 
-  // ✨ ここが新機能！「画像解析」というAPIを追加
+  // ── Web Push サブスクリプション ────────────────────────────────
+  PushSubscription: a
+    .model({
+      endpoint:  a.string().required(),
+      p256dh:    a.string().required(),
+      auth:      a.string().required(),
+      userAgent: a.string(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // ── ユーザー設定（通知時刻など） ──────────────────────────────
+  UserSettings: a
+    .model({
+      notifyTime:    a.string().required(),
+      timezone:      a.string().required(),
+      notifyEnabled: a.boolean().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
+
+  // ── 画像解析クエリ（既存） ────────────────────────────────────
   analyzeImage: a
     .query()
-    .arguments({ imageKey: a.string().required() }) // 引数: 画像の場所
-    .returns(a.json()) // 戻り値: JSONデータ
-    .authorization((allow) => [allow.authenticated()]) // ログインユーザーのみ実行可能
-    .handler(a.handler.function(analyzeImage)), // 実体はこの関数
+    .arguments({ imageKey: a.string().required() })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(analyzeImage)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
