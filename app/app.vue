@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { Authenticator } from "@aws-amplify/ui-vue";
-import "@aws-amplify/ui-vue/styles.css";
+import LoginView from './login.vue';
+import TutorialView from './tutorial.vue';
 import { Amplify } from "aws-amplify";
 import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
@@ -13,6 +13,31 @@ const client = generateClient<Schema>();
 
 // ── 定数 ─────────────────────────────────────────────────────────
 const LOW_STOCK_THRESHOLD = 0.20;
+const isSignedIn = ref(false);
+const showTutorial = ref(false);
+
+// 初回起動チェック
+function checkFirstLaunch() {
+  const seen = localStorage.getItem('beautify_tutorial_seen');
+  if (!seen) showTutorial.value = true;
+}
+function closeTutorial() {
+  localStorage.setItem('beautify_tutorial_seen', '1');
+  showTutorial.value = false;
+}
+
+async function handleSignedIn() {
+  isSignedIn.value = true;
+  checkFirstLaunch();
+  await listCosmetics();
+  await loadSettings();
+}
+
+async function handleSignOut() {
+  const { signOut } = await import('aws-amplify/auth');
+  await signOut();
+  isSignedIn.value = false;
+}
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? '';
 
 // 選択可能な通知時刻リスト（6:00〜23:00）
@@ -272,15 +297,17 @@ async function deleteCosmetic(id: string) {
 </script>
 
 <template>
-  <authenticator :hide-sign-up="false">
-    <template v-slot="{ signOut }">
-      <div class="app-container">
+  <LoginView v-if="!isSignedIn" @signed-in="handleSignedIn" />
+  <template v-else>
+    <TutorialView v-if="showTutorial" @close="closeTutorial" />
+    <div v-show="!showTutorial" class="app-container">
 
         <!-- ── ヘッダー ── -->
         <header class="sticky-header">
           <div class="header-content">
             <h1 class="logo">Beautify</h1>
             <div class="header-actions">
+              <button class="help-btn" @click="showTutorial = true" title="使い方">?</button>
               <button class="bell-btn"
                 :class="{ granted: notificationPermission === 'granted', denied: notificationPermission === 'denied' }"
                 @click="requestNotificationPermission"
@@ -289,7 +316,7 @@ async function deleteCosmetic(id: string) {
                 <span>{{ notificationPermission === 'denied' ? '🔕' : '🔔' }}</span>
                 <span v-if="notificationPermission !== 'granted'" class="bell-badge">!</span>
               </button>
-              <button @click="signOut" class="icon-btn">Log out</button>
+              <button @click="handleSignOut" class="icon-btn">Log out</button>
             </div>
           </div>
 
@@ -439,22 +466,26 @@ async function deleteCosmetic(id: string) {
           </div>
 
         </main>
-      </div>
-    </template>
-  </authenticator>
+    </div>
+  </template>
 </template>
 
 <style scoped>
+/* ── 横スクロール完全禁止 ── */
+* { box-sizing: border-box; max-width: 100%; }
+
 /* ── 基本 ── */
-.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; min-height: 100vh; color: #333; }
+.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; min-height: 100vh; color: #333; padding-bottom: env(safe-area-inset-bottom); overflow-x: hidden; width: 100%; }
 
 /* ── ヘッダー ── */
-.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; }
+.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 .header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .logo { font-family: 'Georgia', serif; font-size: 1.5rem; color: #fd4376; margin: 0; font-weight: bold; }
 .icon-btn { background: none; border: 1px solid #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; color: #666; cursor: pointer; }
 
+.help-btn { background: none; border: 1.5px solid #eee; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; font-weight: bold; color: #aaa; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.help-btn:hover { border-color: #fd4376; color: #fd4376; }
 .bell-btn { position: relative; background: none; border: 1.5px solid #eee; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .bell-btn.granted { border-color: #fd4376; background: #fff0f5; }
 .bell-btn.denied  { opacity: 0.5; }
@@ -523,7 +554,7 @@ async function deleteCosmetic(id: string) {
 .notify-disabled-hint { font-size: 0.68rem; color: #ccc; }
 
 /* ── フォームカード ── */
-.main-content { max-width: 600px; margin: 0 auto; padding: 20px; }
+.main-content { max-width: 600px; margin: 0 auto; padding: 20px; overflow-x: hidden; width: 100%; box-sizing: border-box; }
 .card { background: white; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 30px; }
 .card-header { background: #FFF0F5; padding: 20px; text-align: center; }
 .card-header h2 { margin: 0; font-size: 1.2rem; color: #fd4376; }
@@ -556,7 +587,7 @@ async function deleteCosmetic(id: string) {
 .section-title { font-size: 1.1rem; color: #333; margin-bottom: 15px; padding-left: 5px; }
 .empty-state { text-align: center; padding: 40px; color: #bbb; font-size: 0.9rem; }
 .empty-state span { font-size: 2.5rem; display: block; margin-bottom: 8px; }
-.cosmetic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.cosmetic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; overflow: hidden; }
 
 .cosmetic-card { background: white; border-radius: 16px; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; border: 1.5px solid transparent; transition: all 0.25s; }
 .cosmetic-card.low-stock { border-color: #fd4376; animation: card-pulse 3s ease-in-out infinite; }

@@ -2,8 +2,11 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.yama.beautify',
-  appName: 'beautify',
-  webDir: '.output/public'
+  appName: 'Beautify',
+  webDir: '.output/public',
+  ios: {
+    contentInset: 'always',  
+  },
 };
 
 export default config;
