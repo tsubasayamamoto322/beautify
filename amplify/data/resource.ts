@@ -1,5 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { analyzeImage } from '../functions/analyze-image/resource';
+import { sendEmail } from '../functions/sendEmail/resource';
 
 const schema = a.schema({
   // ── コスメ ──────────────────────────────────────────────────────
@@ -42,6 +43,17 @@ const schema = a.schema({
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(analyzeImage)),
+
+  // ── メール送信クエリ ──────────────────────────────────────────
+  sendEmail: a
+    .query()
+    .arguments({
+      toEmail:   a.string().required(),
+      emailType: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(sendEmail)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

@@ -7,12 +7,23 @@ import { auth }                         from './auth/resource';
 import { data }                         from './data/resource';
 import { storage }                      from './storage/resource';
 import { analyzeImage }                 from './functions/analyze-image/resource';
+import { sendEmail }                     from './functions/sendEmail/resource';
 import { dailyPushNotification }        from './functions/dailyPushNotification/resource';
 import { Stack }                        from 'aws-cdk-lib';
+import { PolicyStatement, Effect }      from 'aws-cdk-lib/aws-iam';
 import { Schedule, ScheduleExpression } from 'aws-cdk-lib/aws-scheduler';
 import { LambdaInvoke }                 from 'aws-cdk-lib/aws-scheduler-targets';
 
-const backend = defineBackend({ auth, data, storage, analyzeImage, dailyPushNotification });
+const backend = defineBackend({ auth, data, storage, analyzeImage, dailyPushNotification, sendEmail });
+
+// ── sendEmail に SES 送信権限を付与 ──────────────────────────────
+backend.sendEmail.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+    resources: ['*'],
+  })
+);
 
 // ── analyze-image に S3 バケット名と読み取り権限を付与 ─────────────
 const s3Bucket = backend.storage.resources.bucket;

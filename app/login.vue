@@ -1,6 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { signIn, signUp, confirmSignUp, resetPassword, confirmResetPassword } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/data';
+import { Amplify } from 'aws-amplify';
+import outputs from '../amplify_outputs.json';
+import type { Schema } from '../amplify/data/resource';
+
+Amplify.configure(outputs);
+const client = generateClient<Schema>();
+
+async function sendEmailNotification(toEmail: string, emailType: 'welcome' | 'password_changed') {
+  try {
+    await client.queries.sendEmail(
+      { toEmail, emailType },
+      { authMode: 'iam' }
+    );
+    console.log(`[sendEmail] ${emailType} → ${toEmail}`);
+  } catch (e) {
+    console.error('[sendEmail] 失敗:', e);
+  }
+}
 
 // ── 画面モード ───────────────────────────────────────────────────
 type Mode = 'login' | 'signup' | 'confirm' | 'forgot' | 'forgot_confirm';
@@ -61,6 +80,7 @@ async function handleConfirm() {
   isLoading.value = true;
   try {
     await confirmSignUp({ username: email.value, confirmationCode: confirmCode.value });
+    await sendEmailNotification(email.value, 'welcome');
     mode.value = 'login';
     successMsg.value = '登録が完了しました！ログインしてください';
   } catch (e: any) {
@@ -86,6 +106,7 @@ async function handleForgotConfirm() {
   isLoading.value = true;
   try {
     await confirmResetPassword({ username: email.value, confirmationCode: confirmCode.value, newPassword: newPassword.value });
+    await sendEmailNotification(email.value, 'password_changed');
     mode.value = 'login';
     successMsg.value = 'パスワードを変更しました！ログインしてください';
   } catch (e: any) {
