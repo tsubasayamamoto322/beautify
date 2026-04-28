@@ -14,6 +14,8 @@ const schema = a.schema({
       timesPerDay:   a.float(),
       currentAmount: a.float(),
       imageUrl:      a.string(),
+      autoDeduct:    a.boolean(),
+      lastDeductedAt: a.string(),
     })
     .authorization((allow) => [allow.owner()]),
 

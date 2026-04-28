@@ -1,0 +1,48 @@
+version: 2
+updates:
+  # npm パッケージの自動更新
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 5
+    groups:
+      # AWS / Amplify 系はまとめて更新
+      amplify:
+        patterns:
+          - "aws-amplify"
+          - "@aws-amplify/*"
+          - "@aws-sdk/*"
+          - "aws-cdk-lib"
+          - "constructs"
+      # Capacitor 系はまとめて更新（iOS/Android ネイティブ側に影響）
+      capacitor:
+        patterns:
+          - "@capacitor/*"
+      # Nuxt / Vue 系
+      nuxt:
+        patterns:
+          - "nuxt"
+          - "vue"
+          - "vue-router"
+
+  # Lambda 関数の npm パッケージ
+  - package-ecosystem: npm
+    directory: /amplify/functions/dailyPushNotification
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    open-pull-requests-limit: 3
+
+  # GitHub Actions 自体のバージョン更新
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Asia/Tokyo

@@ -298,9 +298,9 @@ async function handleForgotConfirm() {
 <style scoped>
 /* ── 変数 ── */
 :root {
-  --pink:      #fd4376;
-  --pink-soft: #ff8090;
-  --pink-pale: #fff0f5;
+  --pink:      #3DB88A;
+  --pink-soft: #5ECFA8;
+  --pink-pale: #E8F7F3;
 }
 
 /* ── 背景 ── */
@@ -326,9 +326,9 @@ async function handleForgotConfirm() {
   filter: blur(60px);
   pointer-events: none;
 }
-.orb1 { width: 300px; height: 300px; background: rgba(253,67,118,0.12); top: -80px; right: -60px; }
+.orb1 { width: 300px; height: 300px; background: rgba(61,184,138,0.12); top: -80px; right: -60px; }
 .orb2 { width: 200px; height: 200px; background: rgba(255,128,144,0.10); bottom: 40px; left: -60px; }
-.orb3 { width: 150px; height: 150px; background: rgba(253,67,118,0.07); top: 40%; left: 30%; }
+.orb3 { width: 150px; height: 150px; background: rgba(61,184,138,0.07); top: 40%; left: 30%; }
 
 /* ── カード ── */
 .auth-card {
@@ -338,7 +338,7 @@ async function handleForgotConfirm() {
   border-radius: 32px;
   padding: 40px 32px 36px;
   box-shadow:
-    0 20px 60px rgba(253,67,118,0.10),
+    0 20px 60px rgba(61,184,138,0.10),
     0 4px 20px rgba(0,0,0,0.04);
   position: relative;
   z-index: 1;
@@ -350,7 +350,7 @@ async function handleForgotConfirm() {
   font-size: 2.4rem;
   display: block;
   margin-bottom: 6px;
-  background: linear-gradient(135deg, #fd4376, #ff8090);
+  background: linear-gradient(135deg, #3DB88A, #5ECFA8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: float 3s ease-in-out infinite;
@@ -362,7 +362,7 @@ async function handleForgotConfirm() {
 .logo-text {
   font-family: 'Georgia', serif;
   font-size: 2rem;
-  color: #fd4376;
+  color: #3DB88A;
   margin: 0;
   letter-spacing: 0.05em;
 }
@@ -390,7 +390,7 @@ async function handleForgotConfirm() {
   transition: all 0.2s;
   -webkit-appearance: none;
 }
-.field input:focus { border-color: #fd4376; background: white; box-shadow: 0 0 0 3px rgba(253,67,118,0.08); }
+.field input:focus { border-color: #3DB88A; background: white; box-shadow: 0 0 0 3px rgba(61,184,138,0.08); }
 
 .password-wrap { position: relative; }
 .password-wrap input { width: 100%; box-sizing: border-box; padding-right: 48px; }
@@ -406,14 +406,14 @@ async function handleForgotConfirm() {
 .primary-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #fd4376 0%, #ff8090 100%);
+  background: linear-gradient(135deg, #3DB88A 0%, #5ECFA8 100%);
   color: white;
   border: none;
   border-radius: 50px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(253,67,118,0.35);
+  box-shadow: 0 6px 20px rgba(61,184,138,0.35);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -422,7 +422,7 @@ async function handleForgotConfirm() {
   margin-top: 4px;
   -webkit-appearance: none;
 }
-.primary-btn:active { transform: scale(0.98); box-shadow: 0 3px 12px rgba(253,67,118,0.3); }
+.primary-btn:active { transform: scale(0.98); box-shadow: 0 3px 12px rgba(61,184,138,0.3); }
 .primary-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .btn-spinner {
@@ -443,7 +443,7 @@ async function handleForgotConfirm() {
   margin-top: 4px;
 }
 .auth-links button {
-  background: none; border: none; color: #fd4376;
+  background: none; border: none; color: #3DB88A;
   font-size: 0.78rem; cursor: pointer; padding: 4px;
   text-decoration: underline; text-underline-offset: 2px;
 }
