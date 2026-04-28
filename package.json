@@ -11,22 +11,22 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@aws-amplify/ui-vue": "^4.3.7",
-    "@aws-sdk/client-bedrock-runtime": "^3.962.0",
-    "@aws-sdk/client-s3": "^3.962.0",
+    "@aws-amplify/ui-vue": "^4.4.3",
+    "@aws-sdk/client-bedrock-runtime": "^3.1038.0",
+    "@aws-sdk/client-s3": "^3.1038.0",
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "@capacitor/ios": "^8.0.2",
     "@capacitor/push-notifications": "^8.0.2",
-    "aws-amplify": "^6.15.9",
+    "aws-amplify": "^6.16.4",
     "nuxt": "^4.2.2",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.19.0",
-    "@aws-amplify/backend-cli": "^1.8.1",
+    "@aws-amplify/backend": "^1.22.0",
+    "@aws-amplify/backend-cli": "^1.8.2",
     "@aws-sdk/client-dynamodb": "^3.0.0",
     "@aws-sdk/client-ses": "^3.0.0",
     "@aws-sdk/util-dynamodb": "^3.0.0",
