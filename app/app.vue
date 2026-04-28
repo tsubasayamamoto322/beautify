@@ -5,6 +5,8 @@ import TutorialView from './tutorial.vue';
 import { Amplify } from "aws-amplify";
 import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
+import { PushNotifications } from '@capacitor/push-notifications';
+import { Capacitor } from '@capacitor/core';
 import type { Schema } from "../amplify/data/resource";
 import outputs from "../amplify_outputs.json";
 
@@ -14,7 +16,52 @@ const client = generateClient<Schema>();
 // ── 定数 ─────────────────────────────────────────────────────────
 const LOW_STOCK_THRESHOLD = 0.20;
 const isSignedIn = ref(false);
+const deviceToken = ref<string>('');
 const showTutorial = ref(false);
+const headerHeight = ref(0);
+const showAddModal = ref(false);
+const viewMode = ref<'grid' | 'swipe'>('grid');
+const showFilterModal = ref(false);
+const filterMode = ref<'all' | 'active'>('all');
+const sortMode = ref<'default' | 'low_stock' | 'name' | 'remaining'>('default');
+
+const filteredCosmetics = computed(() => {
+  let items = [...cosmetics.value];
+  // フィルター
+  if (filterMode.value === 'active') {
+    items = items.filter(i => i.currentAmount > 0);
+  }
+  // ソート
+  if (sortMode.value === 'low_stock') {
+    items.sort((a, b) => (a.currentAmount / a.totalCapacity) - (b.currentAmount / b.totalCapacity));
+  } else if (sortMode.value === 'name') {
+    items.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  } else if (sortMode.value === 'remaining') {
+    items.sort((a, b) => (b.currentAmount / b.totalCapacity) - (a.currentAmount / a.totalCapacity));
+  }
+  return items;
+});
+const swipeIndex = ref(0);
+const swipeTouchStartX = ref(0);
+const toastMessage = ref('');
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showToast(msg: string) {
+  toastMessage.value = msg;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastMessage.value = ''; }, 3000);
+}
+
+function openAddModal() { showAddModal.value = true; }
+function closeAddModal(registered = false) {
+  showAddModal.value = false;
+  previewUrl.value = '';
+  name.value = '';
+  totalCapacity.value = '';
+  usagePerApp.value = '';
+  timesPerDay.value = '1';
+  if (registered) showToast('✅ コスメを登録しました！');
+}
 
 // 初回起動チェック
 function checkFirstLaunch() {
@@ -26,9 +73,52 @@ function closeTutorial() {
   showTutorial.value = false;
 }
 
+async function initPushNotifications() {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  const permission = await PushNotifications.requestPermissions();
+  if (permission.receive !== 'granted') return;
+
+  await PushNotifications.register();
+
+  PushNotifications.addListener('registration', async (token) => {
+    console.log('[APNs] デバイストークン:', token.value);
+    deviceToken.value = token.value;
+    // DynamoDBに保存（既存があれば上書き）
+    try {
+      // 既存のトークンを検索
+      const existing = await client.models.PushSubscription.list();
+      const myToken = existing.data?.find((s: any) => s.endpoint === token.value);
+      if (!myToken) {
+        const result = await client.models.PushSubscription.create({
+          endpoint: token.value,
+        });
+        console.log('[APNs] トークン保存成功:', result);
+      } else {
+        console.log('[APNs] トークン既存のためスキップ');
+      }
+    } catch (e) {
+      console.error('[APNs] トークン保存失敗:', e);
+    }
+  });
+
+  PushNotifications.addListener('registrationError', (err) => {
+    console.error('[APNs] 登録エラー:', err);
+  });
+
+  PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    console.log('[APNs] 通知受信:', notification);
+  });
+
+  PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    console.log('[APNs] 通知タップ:', action);
+  });
+}
+
 async function handleSignedIn() {
   isSignedIn.value = true;
   checkFirstLaunch();
+  await initPushNotifications();
   await listCosmetics();
   await loadSettings();
 }
@@ -100,6 +190,22 @@ function percentageRemaining(item: Schema['Cosmetic']['type']): number {
 
 // ── Service Worker 初期化 ─────────────────────────────────────────
 async function initServiceWorker() {
+  // iOSはAPNs経由で通知（initPushNotificationsで処理済み）
+  if (Capacitor.isNativePlatform()) {
+    // デバイストークンがDynamoDBに保存済みなら通知許可済みとみなす
+    try {
+      const { data: subs } = await client.models.PushSubscription.list();
+      if (subs && subs.length > 0) {
+        notificationPermission.value = 'granted';
+      } else {
+        notificationPermission.value = 'default';
+      }
+    } catch {
+      notificationPermission.value = 'default';
+    }
+    return;
+  }
+  // Web版はService Worker
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
     const reg = await navigator.serviceWorker.register('/sw.js');
@@ -112,13 +218,18 @@ async function initServiceWorker() {
 
 // ── 通知許可 & Push サブスクリプション ───────────────────────────
 async function requestNotificationPermission() {
+  // iOSはAPNsで通知許可済み（initPushNotificationsで処理済み）
+  if (Capacitor.isNativePlatform()) {
+    notificationPermission.value = 'granted';
+    await saveSettings();
+    return;
+  }
+  // Web版
   if (!swRegistration.value) { alert('Service Workerがまだ準備中です'); return; }
-  if (!VAPID_PUBLIC_KEY)     { alert('.env に VITE_VAPID_PUBLIC_KEY を設定してください'); return; }
-
+  if (!VAPID_PUBLIC_KEY) { alert('.env に VITE_VAPID_PUBLIC_KEY を設定してください'); return; }
   const permission = await Notification.requestPermission();
   notificationPermission.value = permission;
-  if (permission !== 'granted') { alert('通知が拒否されました。ブラウザ設定から許可してください。'); return; }
-
+  if (permission !== 'granted') { alert('通知が拒否されました'); return; }
   try {
     let sub = await swRegistration.value.pushManager.getSubscription();
     if (!sub) {
@@ -127,30 +238,18 @@ async function requestNotificationPermission() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
     }
-
     const p256dh = sub.getKey('p256dh')!;
     const auth   = sub.getKey('auth')!;
-    const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
-    const authBase64   = btoa(String.fromCharCode(...new Uint8Array(auth)));
-
-    // 古いサブスクリプションを削除して新規保存
     const { data: existing } = await client.models.PushSubscription.list();
     for (const old of existing) await client.models.PushSubscription.delete({ id: old.id });
-
     await client.models.PushSubscription.create({
       endpoint:  sub.endpoint,
-      p256dh:    p256dhBase64,
-      auth:      authBase64,
+      p256dh:    btoa(String.fromCharCode(...new Uint8Array(p256dh))),
+      auth:      btoa(String.fromCharCode(...new Uint8Array(auth))),
       userAgent: navigator.userAgent.slice(0, 200),
     });
-
-    await showLocalNotification(
-      '✅ 通知を有効にしました',
-      `毎日 ${notifyHour.value}:00 と残量が少なくなった時にお知らせします！`
-    );
   } catch (err) {
     console.error('Push設定失敗:', err);
-    alert('通知の設定に失敗しました: ' + err);
   }
 }
 
@@ -184,24 +283,45 @@ async function loadUserSettings() {
   if (settings.length > 0) {
     const s = settings[0];
     userSettingsId.value = s.id;
-    notifyHour.value     = s.notifyHour ?? 8;
+    // notifyTime "08:00" から時間を取得
+    if (s.notifyTime) {
+      notifyHour.value = parseInt(s.notifyTime.split(':')[0]) ?? 8;
+    }
+  }
+}
+
+async function saveSettings() {
+  console.log('[saveSettings] 開始 userSettingsId:', userSettingsId.value);
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const notifyTime = `${String(notifyHour.value).padStart(2, '0')}:00`;
+  console.log('[saveSettings] timezone:', timezone, 'notifyTime:', notifyTime);
+  try {
+    if (userSettingsId.value) {
+      const result = await client.models.UserSettings.update({
+        id: userSettingsId.value,
+        notifyEnabled: true,
+        timezone,
+        notifyTime,
+      });
+      console.log('[saveSettings] update結果:', result);
+    } else {
+      const { data: created, errors } = await client.models.UserSettings.create({
+        notifyEnabled: true,
+        timezone,
+        notifyTime,
+      });
+      console.log('[saveSettings] create結果:', created, 'errors:', errors);
+      userSettingsId.value = created?.id ?? null;
+    }
+  } catch (e) {
+    console.error('[saveSettings] エラー:', e);
   }
 }
 
 async function saveNotifyHour() {
   isSavingTime.value = true;
   try {
-    if (userSettingsId.value) {
-      await client.models.UserSettings.update({
-        id:         userSettingsId.value,
-        notifyHour: notifyHour.value,
-      });
-    } else {
-      const { data: created } = await client.models.UserSettings.create({
-        notifyHour: notifyHour.value,
-      });
-      userSettingsId.value = created?.id ?? null;
-    }
+    await saveSettings();
     // 保存成功フラッシュ
     savedTimeFlash.value = true;
     setTimeout(() => { savedTimeFlash.value = false; }, 2000);
@@ -264,8 +384,7 @@ async function createCosmetic() {
     timesPerDay:   parseFloat(timesPerDay.value) || 2,
     imageUrl:      finalImagePath,
   });
-  name.value = ''; totalCapacity.value = ''; usagePerApp.value = ''; timesPerDay.value = '2';
-  imageFile.value = null; previewUrl.value = null; uploadedImagePath.value = '';
+  closeAddModal(true);
   listCosmetics();
 }
 
@@ -316,7 +435,7 @@ async function deleteCosmetic(id: string) {
                 <span>{{ notificationPermission === 'denied' ? '🔕' : '🔔' }}</span>
                 <span v-if="notificationPermission !== 'granted'" class="bell-badge">!</span>
               </button>
-              <button @click="handleSignOut" class="icon-btn">Log out</button>
+              <button @click="handleSignOut" class="icon-btn">ログアウト</button>
             </div>
           </div>
 
@@ -336,7 +455,7 @@ async function deleteCosmetic(id: string) {
           </div>
         </header>
 
-        <main class="main-content">
+        <main class="main-content" :style="{ paddingTop: headerHeight + 'px' }">
 
           <!-- ── ⚠️ 残量アラームバナー ── -->
           <transition name="slide-down">
@@ -356,8 +475,10 @@ async function deleteCosmetic(id: string) {
             <div class="notify-panel-left">
               <span class="notify-icon">🕐</span>
               <div class="notify-label">
-                <span class="notify-label-main">毎日の通知時刻</span>
-                <span class="notify-label-sub">残量 20% 以下のコスメがある日に送信</span>
+                <span class="notify-label-main">通知時刻を設定</span>
+                <span class="notify-label-sub">
+                  {{ userSettingsId && notificationPermission === 'granted' ? `現在: ${String(notifyHour).padStart(2, '0')}:00` : '残量20%以下で通知' }}
+                </span>
               </div>
             </div>
             <div class="notify-panel-right">
@@ -373,8 +494,8 @@ async function deleteCosmetic(id: string) {
                   @click="saveNotifyHour"
                 >
                   <span v-if="isSavingTime" class="mini-spinner"></span>
-                  <span v-else-if="savedTimeFlash">✓</span>
-                  <span v-else>保存</span>
+                  <span v-else-if="savedTimeFlash">✓ 保存済み</span>
+                  <span v-else>{{ userSettingsId ? '変更' : '保存' }}</span>
                 </button>
               </div>
               <span v-if="notificationPermission !== 'granted'" class="notify-disabled-hint">
@@ -383,61 +504,88 @@ async function deleteCosmetic(id: string) {
             </div>
           </div>
 
-          <!-- ── 登録フォーム ── -->
-          <div class="card form-card">
-            <div class="card-header">
-              <h2>New Item</h2>
-              <p>コスメを撮影するとAIが自動入力します ✨</p>
+          <!-- ── 追加モーダル ── -->
+          <transition name="fade">
+            <div v-if="showAddModal" class="modal-overlay" @click.self="closeAddModal(false)">
+              <div class="modal-card">
+                <div class="modal-header">
+                  <h2>コスメを追加</h2>
+                  <button class="modal-close" @click="closeAddModal(false)">✕</button>
+                </div>
+                <div class="form-body">
+                  <div class="upload-area">
+                    <input type="file" accept="image/png, image/jpeg" capture="environment"
+                      @change="onFileChange" id="file-input" class="file-input" :disabled="isAnalyzing" />
+                    <label for="file-input" class="upload-label">
+                      <div v-if="isAnalyzing" class="loading-overlay">
+                        <div class="spinner"></div><span>AI解析中...</span>
+                      </div>
+                      <div v-else-if="previewUrl" class="preview-box">
+                        <img :src="previewUrl" alt="Preview" />
+                      </div>
+                      <div v-else class="upload-placeholder">
+                        <span class="plus-icon">📷</span><span>写真を撮る</span>
+                      </div>
+                    </label>
+                  </div>
+                  <div class="input-group">
+                    <input v-model="name" placeholder="商品名 (自動入力)" class="stylish-input" />
+                  </div>
+                  <div class="input-row">
+                    <div class="input-group">
+                      <input v-model="totalCapacity" type="number" placeholder="容量" class="stylish-input" />
+                      <span class="unit">ml/g</span>
+                    </div>
+                    <div class="input-group">
+                      <input v-model="usagePerApp" type="number" placeholder="1回分" class="stylish-input" />
+                      <span class="unit">使用</span>
+                    </div>
+                  </div>
+                  <div class="input-group">
+                    <label class="sub-label">1日に使う回数</label>
+                    <div class="times-selector">
+                      <button v-for="n in [1,2,3,4]" :key="n"
+                        class="times-btn" :class="{ active: timesPerDay === String(n) }"
+                        @click="timesPerDay = String(n)">{{ n }}回</button>
+                    </div>
+                  </div>
+                  <button @click="createCosmetic" class="submit-btn" :disabled="isAnalyzing">登録する</button>
+                </div>
+              </div>
             </div>
-            <div class="form-body">
-              <div class="upload-area">
-                <input type="file" accept="image/png, image/jpeg" capture="environment"
-                  @change="onFileChange" id="file-input" class="file-input" :disabled="isAnalyzing" />
-                <label for="file-input" class="upload-label">
-                  <div v-if="isAnalyzing" class="loading-overlay">
-                    <div class="spinner"></div><span>AI解析中...</span>
-                  </div>
-                  <div v-else-if="previewUrl" class="preview-box">
-                    <img :src="previewUrl" alt="Preview" />
-                  </div>
-                  <div v-else class="upload-placeholder">
-                    <span class="plus-icon">📷</span><span>写真を撮る</span>
-                  </div>
-                </label>
-              </div>
+          </transition>
 
-              <div class="input-group">
-                <input v-model="name" placeholder="商品名 (自動入力)" class="stylish-input" />
+          <!-- ── コレクションヘッダー ── -->
+          <div class="collection-header">
+            <div class="collection-header-left">
+              <h3 class="section-title">My Collection</h3>
+            </div>
+            <div class="collection-header-right">
+              <button class="filter-btn" @click="showFilterModal = true" :class="{ active: filterMode !== 'all' || sortMode !== 'default' }">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                フィルター
+              </button>
+              <div class="view-toggle">
+                <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                </button>
+                <button :class="{ active: viewMode === 'swipe' }" @click="viewMode = 'swipe'; swipeIndex = 0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                </button>
               </div>
-              <div class="input-row">
-                <div class="input-group">
-                  <input v-model="totalCapacity" type="number" placeholder="容量" class="stylish-input" />
-                  <span class="unit">ml/g</span>
-                </div>
-                <div class="input-group">
-                  <input v-model="usagePerApp" type="number" placeholder="1回分" class="stylish-input" />
-                  <span class="unit">使用</span>
-                </div>
-              </div>
-              <div class="input-group">
-                <label class="sub-label">1日に使う回数</label>
-                <div class="times-selector">
-                  <button v-for="n in [1,2,3,4]" :key="n"
-                    class="times-btn" :class="{ active: timesPerDay === String(n) }"
-                    @click="timesPerDay = String(n)">{{ n }}回</button>
-                </div>
-              </div>
-              <button @click="createCosmetic" class="submit-btn" :disabled="isAnalyzing">登録する</button>
             </div>
           </div>
+          <div class="scrollable-collection">
 
-          <!-- ── コレクション ── -->
-          <h3 class="section-title">My Collection</h3>
-          <div v-if="cosmetics.length === 0" class="empty-state">
+          <div v-if="filteredCosmetics.length === 0 && cosmetics.length > 0" class="empty-state">
+            <span>🔍</span><p>条件に一致するコスメがありません</p>
+          </div>
+          <div v-else-if="cosmetics.length === 0" class="empty-state">
             <span>📦</span><p>まだ登録されたコスメはありません</p>
           </div>
-          <div class="cosmetic-grid">
-            <div v-for="item in cosmetics" :key="item.id"
+          <!-- グリッド表示 -->
+          <div v-if="viewMode === 'grid'" class="cosmetic-grid">
+            <div v-for="item in filteredCosmetics" :key="item.id"
               class="cosmetic-card"
               :class="{ 'low-stock': item.currentAmount / item.totalCapacity <= LOW_STOCK_THRESHOLD }"
             >
@@ -465,7 +613,93 @@ async function deleteCosmetic(id: string) {
             </div>
           </div>
 
+          <!-- スワイプ表示 -->
+          <div v-else-if="viewMode === 'swipe' && filteredCosmetics.length > 0" class="swipe-view"
+            @touchstart="(e) => { swipeTouchStartX = e.touches[0].clientX }"
+            @touchend="(e) => { const diff = swipeTouchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) { if (diff > 0 && swipeIndex < filteredCosmetics.length - 1) swipeIndex++; else if (diff < 0 && swipeIndex > 0) swipeIndex--; } }"
+          >
+            <div class="swipe-card cosmetic-card"
+              :class="{ 'low-stock': filteredCosmetics[swipeIndex].currentAmount / filteredCosmetics[swipeIndex].totalCapacity <= LOW_STOCK_THRESHOLD }"
+            >
+              <span v-if="filteredCosmetics[swipeIndex].currentAmount / filteredCosmetics[swipeIndex].totalCapacity <= LOW_STOCK_THRESHOLD" class="badge">残り少ない</span>
+              <div class="image-placeholder large">{{ filteredCosmetics[swipeIndex].name.charAt(0) }}</div>
+              <div class="cosmetic-info">
+                <h4>{{ filteredCosmetics[swipeIndex].name }}</h4>
+                <div class="percentage-label" :class="progressClass(filteredCosmetics[swipeIndex])">{{ percentageRemaining(filteredCosmetics[swipeIndex]) }}%</div>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" :class="progressClass(filteredCosmetics[swipeIndex])"
+                    :style="{ width: Math.max(0, percentageRemaining(filteredCosmetics[swipeIndex])) + '%' }"></div>
+                </div>
+                <p class="amount-text">{{ filteredCosmetics[swipeIndex].currentAmount?.toFixed(1) }} / {{ filteredCosmetics[swipeIndex].totalCapacity }} <small>remaining</small></p>
+                <p class="days-text">{{ daysRemaining(filteredCosmetics[swipeIndex]) }}</p>
+              </div>
+              <div class="card-actions">
+                <button class="use-btn"
+                  :disabled="updatingId === filteredCosmetics[swipeIndex].id || filteredCosmetics[swipeIndex].currentAmount <= 0"
+                  @click="recordUsage(filteredCosmetics[swipeIndex])">
+                  <span v-if="updatingId === filteredCosmetics[swipeIndex].id" class="mini-spinner"></span>
+                  <span v-else>✓ 使った</span>
+                </button>
+                <button class="delete-btn" @click="deleteCosmetic(filteredCosmetics[swipeIndex].id)">🗑</button>
+              </div>
+            </div>
+            <div class="swipe-nav">
+              <button class="swipe-arrow" :disabled="swipeIndex === 0" @click="swipeIndex--">‹</button>
+              <span class="swipe-dots">
+                <span v-for="(_, i) in filteredCosmetics" :key="i"
+                  class="swipe-dot" :class="{ active: i === swipeIndex }"
+                  @click="swipeIndex = i"></span>
+              </span>
+              <button class="swipe-arrow" :disabled="swipeIndex === filteredCosmetics.length - 1" @click="swipeIndex++">›</button>
+            </div>
+          </div>
+
+          <!-- トースト -->
+          <transition name="toast">
+            <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
+          </transition>
+          </div>
+
         </main>
+
+
+        <!-- フィルターモーダル -->
+        <transition name="fade">
+          <div v-if="showFilterModal" class="modal-overlay" @click.self="showFilterModal = false">
+            <div class="modal-card filter-modal">
+              <div class="modal-header">
+                <h2>絞り込み・並び替え</h2>
+                <button class="modal-close" @click="showFilterModal = false">✕</button>
+              </div>
+              <div class="filter-body">
+                <div class="filter-section">
+                  <p class="filter-section-title">表示するアイテム</p>
+                  <div class="filter-options">
+                    <button class="filter-option" :class="{ active: filterMode === 'all' }" @click="filterMode = 'all'">すべて表示</button>
+                    <button class="filter-option" :class="{ active: filterMode === 'active' }" @click="filterMode = 'active'">使用中のみ</button>
+                  </div>
+                </div>
+                <div class="filter-section">
+                  <p class="filter-section-title">並び替え</p>
+                  <div class="filter-options">
+                    <button class="filter-option" :class="{ active: sortMode === 'default' }" @click="sortMode = 'default'">登録順</button>
+                    <button class="filter-option" :class="{ active: sortMode === 'low_stock' }" @click="sortMode = 'low_stock'">残り少ない順</button>
+                    <button class="filter-option" :class="{ active: sortMode === 'remaining' }" @click="sortMode = 'remaining'">残り多い順</button>
+                    <button class="filter-option" :class="{ active: sortMode === 'name' }" @click="sortMode = 'name'">名前順</button>
+                  </div>
+                </div>
+                <button class="filter-reset" @click="filterMode = 'all'; sortMode = 'default'">リセット</button>
+              </div>
+            </div>
+          </div>
+        </transition>
+        <!-- ── ➕ 追加ボタン（固定） ── -->
+        <div class="fab-container">
+          <button class="add-fab" @click="openAddModal">
+            <span class="add-fab-icon">＋</span>
+            <span class="add-fab-label">コスメを追加</span>
+          </button>
+        </div>
     </div>
   </template>
 </template>
@@ -474,11 +708,96 @@ async function deleteCosmetic(id: string) {
 /* ── 横スクロール完全禁止 ── */
 * { box-sizing: border-box; max-width: 100%; }
 
+/* ── コレクションヘッダー ── */
+/* ── コレクションヘッダー ── */
+.collection-header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; margin-bottom: 12px; }
+.collection-header-left { display: flex; align-items: center; gap: 8px; }
+.collection-header-right { display: flex; align-items: center; gap: 8px; }
+.filter-badge { background: #fd4376; color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.filter-btn { display: flex; align-items: center; gap: 4px; background: #f5f5f5; border: none; border-radius: 20px; padding: 6px 12px; font-size: 0.78rem; color: #666; cursor: pointer; transition: all 0.2s; }
+.filter-btn.active { background: #fff0f5; color: #fd4376; border: 1px solid #ffd1e8; }
+.view-toggle { display: flex; gap: 4px; background: #f5f5f5; border-radius: 8px; padding: 4px; }
+.view-toggle button { background: none; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: #aaa; transition: all 0.2s; }
+.view-toggle button.active { background: white; color: #fd4376; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+/* ── フィルターモーダル ── */
+.filter-modal { max-height: 70vh; }
+.filter-body { padding: 16px 24px 24px; }
+.filter-section { margin-bottom: 24px; }
+.filter-section-title { font-size: 0.78rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 12px; }
+.filter-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.filter-option { display: flex; align-items: center; gap: 8px; background: #f8f8f8; border: 1.5px solid #eee; border-radius: 12px; padding: 12px 14px; font-size: 0.85rem; color: #555; cursor: pointer; transition: all 0.2s; text-align: left; }
+.filter-option.active { background: #fff0f5; border-color: #fd4376; color: #fd4376; font-weight: 600; }
+.filter-option-icon { font-size: 1.1rem; flex-shrink: 0; }
+.filter-reset { width: 100%; padding: 12px; background: none; border: 1.5px solid #eee; border-radius: 50px; font-size: 0.85rem; color: #aaa; cursor: pointer; margin-top: 8px; transition: all 0.2s; }
+.filter-reset:active { background: #f5f5f5; }
+
+/* ── スワイプビュー ── */
+.swipe-view { padding: 0 20px; }
+.swipe-card { width: 100% !important; }
+.image-placeholder.large { width: 80px; height: 80px; font-size: 2rem; }
+.swipe-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; padding-bottom: 8px; }
+.swipe-arrow { background: none; border: 1.5px solid #eee; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; color: #aaa; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+.swipe-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+.swipe-arrow:not(:disabled) { border-color: #fd4376; color: #fd4376; }
+.swipe-dots { display: flex; gap: 6px; }
+.swipe-dot { width: 8px; height: 8px; border-radius: 50%; background: #eee; cursor: pointer; transition: all 0.2s; }
+.swipe-dot.active { background: #fd4376; width: 20px; border-radius: 4px; }
+
+/* ── トースト ── */
+.toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 24px); left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 50px; font-size: 0.88rem; font-weight: 600; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
+
+/* ── FABボタン ── */
+.fab-container { padding: 12px 20px; padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 8px)); background: #FAFAFA; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; box-sizing: border-box; }
+.add-fab {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin: 0;
+  background: linear-gradient(135deg, #fd4376, #ff8090);
+  color: white; border: none; border-radius: 50px; padding: 14px 24px;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(253,67,118,0.35); transition: all 0.2s;
+  box-sizing: border-box;
+}
+.add-fab:active { transform: scale(0.98); }
+.add-fab-icon { font-size: 1.2rem; }
+.add-fab-label { font-size: 0.95rem; }
+
+/* ── モーダル ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.modal-card {
+  width: 100%; max-width: 600px; max-height: 90vh;
+  background: white; border-radius: 28px 28px 0 0;
+  overflow-y: auto; padding: 0 0 24px;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 16px; border-bottom: 1px solid #f5f5f5; position: sticky; top: 0;
+  background: white; z-index: 1;
+}
+.modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #333; margin: 0; }
+.modal-close {
+  background: #f5f5f5; border: none; width: 32px; height: 32px;
+  border-radius: 50%; font-size: 0.9rem; cursor: pointer; color: #666;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-card .form-body { padding: 16px 24px; }
+
+/* フェードアニメーション */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
 /* ── 基本 ── */
-.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; min-height: 100vh; color: #333; padding-bottom: env(safe-area-inset-bottom); overflow-x: hidden; width: 100%; }
+.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #FAFAFA; height: 100dvh; max-height: 100dvh; color: #333; overflow: hidden; width: 100%; display: flex; flex-direction: column; }
 
 /* ── ヘッダー ── */
-.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; }
 .header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .logo { font-family: 'Georgia', serif; font-size: 1.5rem; color: #fd4376; margin: 0; font-weight: bold; }
@@ -486,7 +805,8 @@ async function deleteCosmetic(id: string) {
 
 .help-btn { background: none; border: 1.5px solid #eee; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; font-weight: bold; color: #aaa; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .help-btn:hover { border-color: #fd4376; color: #fd4376; }
-.bell-btn { position: relative; background: none; border: 1.5px solid #eee; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.bell-label { font-size: 0.65rem; display: block; line-height: 1; }
+.bell-btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background: none; border: 1.5px solid #eee; padding: 4px 8px; height: 36px; border-radius: 18px; cursor: pointer; font-size: 0.85rem; gap: 1px; transition: all 0.2s; white-space: nowrap; }
 .bell-btn.granted { border-color: #fd4376; background: #fff0f5; }
 .bell-btn.denied  { opacity: 0.5; }
 .bell-badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; background: #fd4376; color: white; border-radius: 50%; font-size: 0.6rem; font-weight: bold; display: flex; align-items: center; justify-content: center; }
@@ -554,7 +874,7 @@ async function deleteCosmetic(id: string) {
 .notify-disabled-hint { font-size: 0.68rem; color: #ccc; }
 
 /* ── フォームカード ── */
-.main-content { max-width: 600px; margin: 0 auto; padding: 20px; overflow-x: hidden; width: 100%; box-sizing: border-box; }
+.main-content { max-width: 600px; margin: 0 auto; padding: 16px 20px 0; overflow: hidden; width: 100%; box-sizing: border-box; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .card { background: white; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 30px; }
 .card-header { background: #FFF0F5; padding: 20px; text-align: center; }
 .card-header h2 { margin: 0; font-size: 1.2rem; color: #fd4376; }

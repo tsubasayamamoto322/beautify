@@ -21,9 +21,10 @@ const schema = a.schema({
   PushSubscription: a
     .model({
       endpoint:  a.string().required(),
-      p256dh:    a.string().required(),
-      auth:      a.string().required(),
+      p256dh:    a.string(),
+      auth:      a.string(),
       userAgent: a.string(),
+      platform:  a.string(),
     })
     .authorization((allow) => [allow.owner()]),
 
@@ -52,7 +53,7 @@ const schema = a.schema({
       emailType: a.string().required(),
     })
     .returns(a.json())
-    .authorization((allow) => [allow.authenticated()])
+    .authorization((allow) => [allow.guest()])
     .handler(a.handler.function(sendEmail)),
 });
 

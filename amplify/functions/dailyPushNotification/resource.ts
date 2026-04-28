@@ -5,10 +5,12 @@ export const dailyPushNotification = defineFunction({
   entry: './handler.ts',
   timeoutSeconds: 60,
   memoryMB: 256,
-  resourceGroupName: 'data',   // ← data スタックに割り当てて循環依存を解消
+  resourceGroupName: 'data',
+  runtime: 22,
   environment: {
-    VAPID_PUBLIC_KEY:  process.env.VITE_VAPID_PUBLIC_KEY ?? '',
-    VAPID_SUBJECT:     'mailto:tsubasa322322@gmail.com',
-    VAPID_PRIVATE_KEY: secret('VAPID_PRIVATE_KEY'),
+    APNS_KEY_ID:          '23PYA5PDLB',
+    APNS_TEAM_ID:         '7C69RC5J55',
+    APNS_BUNDLE_ID:       'com.yama.beautify',
+    APNS_PRIVATE_KEY_DER: secret('APNS_PRIVATE_KEY_DER'),
   },
 });
