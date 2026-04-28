@@ -20,6 +20,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Lambda function dependencies
+        run: |
+          npm ci --prefix amplify/functions/dailyPushNotification
+          npm ci --prefix amplify/functions/sendEmail
+
       # Nuxt の型定義ファイル (.nuxt/) を生成
       - name: Generate Nuxt types
         run: npx nuxt prepare
