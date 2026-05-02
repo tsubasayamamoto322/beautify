@@ -200,7 +200,7 @@ const swRegistration   = ref<ServiceWorkerRegistration | null>(null);
 const notifyHour       = ref(8);          // デフォルト 8:00
 const userSettingsId   = ref<string | null>(null);
 const isSavingTime     = ref(false);
-const savedTimeFlash   = ref(false);       // 保存成功フラッシュ
+const savedTimeFlash   = ref(false);
 
 // ── 計算プロパティ ────────────────────────────────────────────────
 const lowStockItems = computed(() =>
@@ -353,26 +353,22 @@ async function loadUserSettings() {
 }
 
 async function saveSettings() {
-  console.log('[saveSettings] 開始 userSettingsId:', userSettingsId.value);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const notifyTime = `${String(notifyHour.value).padStart(2, '0')}:00`;
-  console.log('[saveSettings] timezone:', timezone, 'notifyTime:', notifyTime);
   try {
     if (userSettingsId.value) {
-      const result = await client.models.UserSettings.update({
+      await client.models.UserSettings.update({
         id: userSettingsId.value,
         notifyEnabled: notifyEnabled.value,
         timezone,
         notifyTime,
       });
-      console.log('[saveSettings] update結果:', result);
     } else {
-      const { data: created, errors } = await client.models.UserSettings.create({
+      const { data: created } = await client.models.UserSettings.create({
         notifyEnabled: notifyEnabled.value,
         timezone,
         notifyTime,
       });
-      console.log('[saveSettings] create結果:', created, 'errors:', errors);
       userSettingsId.value = created?.id ?? null;
     }
   } catch (e) {
@@ -384,7 +380,6 @@ async function saveNotifyHour() {
   isSavingTime.value = true;
   try {
     await saveSettings();
-    // 保存成功フラッシュ
     savedTimeFlash.value = true;
     setTimeout(() => { savedTimeFlash.value = false; }, 2000);
   } finally {

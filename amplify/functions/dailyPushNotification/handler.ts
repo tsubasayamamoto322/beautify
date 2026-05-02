@@ -124,6 +124,7 @@ export const handler = async (): Promise<void> => {
       }));
       console.log(`[DailyPush] 自動減算完了: ${item.name} ${item.currentAmount} → ${newAmount}`);
       // 減算後のamountをitemに反映（通知判定用）
+      // 通知判定のため減算後の値を反映
       item.currentAmount = newAmount;
     } catch (e) {
       console.error(`[DailyPush] 自動減算失敗: ${item.name}`, e);

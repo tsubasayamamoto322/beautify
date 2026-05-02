@@ -123,14 +123,12 @@ async function handleForgotConfirm() {
     <div class="bg-orb orb3"></div>
 
     <div class="auth-card">
-      <!-- ロゴ -->
       <div class="auth-logo">
         <div class="logo-icon">✿</div>
         <h1 class="logo-text">Beautify</h1>
         <p class="logo-sub">あなたのコスメを、賢く管理</p>
       </div>
 
-      <!-- ログイン -->
       <form v-if="mode === 'login'" @submit.prevent="handleLogin" class="auth-form">
         <h2 class="form-title">ログイン</h2>
 
@@ -172,7 +170,6 @@ async function handleForgotConfirm() {
         </div>
       </form>
 
-      <!-- 新規登録 -->
       <form v-else-if="mode === 'signup'" @submit.prevent="handleSignUp" class="auth-form">
         <h2 class="form-title">新規登録</h2>
 
@@ -212,7 +209,6 @@ async function handleForgotConfirm() {
         </div>
       </form>
 
-      <!-- メール確認 -->
       <form v-else-if="mode === 'confirm'" @submit.prevent="handleConfirm" class="auth-form">
         <h2 class="form-title">メール確認</h2>
         <p class="form-desc">{{ email }} に送信した確認コードを入力してください</p>
@@ -234,7 +230,6 @@ async function handleForgotConfirm() {
         </div>
       </form>
 
-      <!-- パスワードリセット -->
       <form v-else-if="mode === 'forgot'" @submit.prevent="handleForgot" class="auth-form">
         <h2 class="form-title">パスワードリセット</h2>
         <p class="form-desc">登録済みのメールアドレスを入力してください</p>
@@ -256,7 +251,6 @@ async function handleForgotConfirm() {
         </div>
       </form>
 
-      <!-- 新パスワード設定 -->
       <form v-else-if="mode === 'forgot_confirm'" @submit.prevent="handleForgotConfirm" class="auth-form">
         <h2 class="form-title">新しいパスワード</h2>
 
@@ -296,13 +290,6 @@ async function handleForgotConfirm() {
 </template>
 
 <style scoped>
-/* ── 変数 ── */
-:root {
-  --pink:      #3DB88A;
-  --pink-soft: #5ECFA8;
-  --pink-pale: #E8F7F3;
-}
-
 /* ── 背景 ── */
 .auth-container {
   height: 100vh;
