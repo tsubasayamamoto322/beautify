@@ -47,37 +47,7 @@ jobs:
       - name: Deploy Amplify backend
         run: npx ampx pipeline-deploy --branch ${{ github.ref_name }} --app-id ${{ secrets.AMPLIFY_APP_ID }}
 
-      # ── Nuxt 静的サイトビルド ────────────────────────────────────
-      # バックエンドデプロイ後の amplify_outputs.json を使用
-      - name: Build static site
-        run: npm run generate
-        env:
-          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
-
-      # ── Amplify Hosting へフロントデプロイ ──────────────────────
-      # create-deployment → zip アップロード → start-deployment の順
-      - name: Deploy frontend to Amplify Hosting
-        run: |
-          # .output/public を zip 化
-          cd .output/public
-          zip -r ../../deploy.zip .
-          cd ../..
-
-          # デプロイジョブを作成（presigned URL を取得）
-          RESPONSE=$(aws amplify create-deployment \
-            --app-id "${{ secrets.AMPLIFY_APP_ID }}" \
-            --branch-name "${{ github.ref_name }}")
-
-          JOB_ID=$(echo "$RESPONSE" | jq -r '.jobId')
-          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.zipUploadUrl')
-
-          echo "Uploading build artifact (job: $JOB_ID)..."
-          curl --silent --fail -T deploy.zip "$UPLOAD_URL"
-
-          # デプロイ開始
-          aws amplify start-deployment \
-            --app-id "${{ secrets.AMPLIFY_APP_ID }}" \
-            --branch-name "${{ github.ref_name }}" \
-            --job-id "$JOB_ID"
-
-          echo "✅ Deployment started: $JOB_ID"
+      # ── フロントデプロイについて ─────────────────────────────────
+      # Amplify Hosting が GitHub リポジトリと接続済みのため、
+      # main への push 時に Amplify Hosting が自動でビルド・デプロイする。
+      # GitHub Actions 側での手動デプロイは不要。
