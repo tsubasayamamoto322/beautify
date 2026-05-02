@@ -26,9 +26,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Lambda 関数の依存パッケージも個別にインストール
-      - name: Install Lambda function dependencies
+      # amplify/ と各 Lambda 関数の依存パッケージをインストール
+      # ampx は amplify/tsconfig.json でTypeScript検証するため amplify/node_modules が必要
+      - name: Install Amplify and Lambda function dependencies
         run: |
+          npm install --prefix amplify
           npm ci --prefix amplify/functions/dailyPushNotification
           npm ci --prefix amplify/functions/sendEmail
 

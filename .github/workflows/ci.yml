@@ -20,8 +20,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Lambda function dependencies
+      - name: Install Amplify and Lambda function dependencies
         run: |
+          npm install --prefix amplify
           npm ci --prefix amplify/functions/dailyPushNotification
           npm ci --prefix amplify/functions/sendEmail
 
