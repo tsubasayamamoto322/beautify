@@ -14,7 +14,7 @@ const APNS_KEY_ID          = process.env.APNS_KEY_ID!;
 const APNS_TEAM_ID         = process.env.APNS_TEAM_ID!;
 const APNS_BUNDLE_ID       = process.env.APNS_BUNDLE_ID!;
 const APNS_PRIVATE_KEY_DER = process.env.APNS_PRIVATE_KEY_DER!;
-const APNS_HOST            = 'https://api.sandbox.push.apple.com';
+const APNS_HOST            = 'https://api.push.apple.com';
 
 function isNotifyTime(notifyTime: string, timezone: string): boolean {
   try {
