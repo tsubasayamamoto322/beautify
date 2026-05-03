@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   ssr: false,
   nitro: {
-    preset: 'static',
+    preset: 'aws-amplify',
   },
   css: ['~/assets/css/global.css'], 
   app: {
