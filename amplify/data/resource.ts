@@ -3,7 +3,6 @@ import { analyzeImage } from '../functions/analyze-image/resource';
 import { sendEmail } from '../functions/sendEmail/resource';
 
 const schema = a.schema({
-  // ── コスメ ──────────────────────────────────────────────────────
   Cosmetic: a
     .model({
       name:          a.string().required(),
@@ -19,7 +18,6 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  // ── Web Push サブスクリプション ────────────────────────────────
   PushSubscription: a
     .model({
       endpoint:  a.string().required(),
@@ -30,7 +28,6 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  // ── ユーザー設定（通知時刻など） ──────────────────────────────
   UserSettings: a
     .model({
       notifyTime:    a.string().required(),
@@ -39,7 +36,6 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
-  // ── 画像解析クエリ（既存） ────────────────────────────────────
   analyzeImage: a
     .query()
     .arguments({ imageKey: a.string().required() })
@@ -47,7 +43,6 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(analyzeImage)),
 
-  // ── メール送信クエリ ──────────────────────────────────────────
   sendEmail: a
     .query()
     .arguments({

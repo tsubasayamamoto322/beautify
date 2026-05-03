@@ -12,16 +12,16 @@ const slides = [
     title: 'Beautifyへようこそ',
     subtitle: 'あなたのコスメを、賢く管理',
     description: 'コスメの残量を記録して、なくなる前にお知らせ。補充し忘れでお気に入りが切れることがなくなります。',
-    color: '#fd4376',
-    bgColor: '#fff0f5',
+    color: '#3DB88A',
+    bgColor: '#E8F7F3',
   },
   {
     icon: '📷',
     title: 'コスメを登録する',
     subtitle: '＋ボタンからカメラで撮影',
     description: '画面下の「コスメを追加」ボタンをタップ。パッケージを撮影するとAIがブランド名・商品名・容量を自動入力します。',
-    color: '#ff6b9d',
-    bgColor: '#fff5f9',
+    color: '#3DB88A',
+    bgColor: '#E8F7F3',
     steps: ['① 画面下の「コスメを追加」をタップ', '② コスメのパッケージを撮影', '③ 内容を確認して「登録する」'],
   },
   {
@@ -29,8 +29,8 @@ const slides = [
     title: '使ったら記録する',
     subtitle: '「使った」ボタンを押すだけ',
     description: 'My Collectionのコスメカードにある「✓ 使った」をタップするだけ。残量が自動で減り、あと何日分残っているか計算します。',
-    color: '#e91e8c',
-    bgColor: '#fdf0f8',
+    color: '#3DB88A',
+    bgColor: '#E8F7F3',
     steps: ['① コスメカードの「✓ 使った」をタップ', '② 残量が1回分ずつ減る', '③ 残り日数が自動計算される'],
   },
   {
@@ -38,8 +38,8 @@ const slides = [
     title: '設定・通知を管理する',
     subtitle: '右上のメニューから設定',
     description: '右上のメニュー（☰）から通知設定・使い方・ログイン情報の変更ができます。通知をONにすると残量が減った時にお知らせします。',
-    color: '#fd4376',
-    bgColor: '#fff0f5',
+    color: '#3DB88A',
+    bgColor: '#E8F7F3',
     steps: ['① 右上の☰をタップ', '② 「通知設定」で時刻・タイミングを設定', '③ 残量が設定日数を切るとお知らせ'],
   },
 ];
@@ -108,7 +108,7 @@ function onTouchEnd(e: TouchEvent) {
 
     <div class="nav-area">
       <button class="nav-prev" :class="{ invisible: currentSlide === 0 }" @click="prev">←</button>
-      <button class="nav-next" :style="{ background: `linear-gradient(135deg, ${slides[currentSlide].color}, #ff8090)` }" @click="next">
+      <button class="nav-next" @click="next">
         {{ isLast ? 'はじめる 🚀' : '次へ →' }}
       </button>
     </div>
@@ -138,8 +138,8 @@ function onTouchEnd(e: TouchEvent) {
 }
 .illus-welcome { position: relative; width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; }
 .illus-orb { position: absolute; border-radius: 50%; filter: blur(40px); }
-.orb1 { width: 160px; height: 160px; background: rgba(253,67,118,0.15); top: 0; right: 0; }
-.orb2 { width: 120px; height: 120px; background: rgba(255,107,144,0.12); bottom: 0; left: 0; }
+.orb1 { width: 160px; height: 160px; background: rgba(61,184,138,0.15); top: 0; right: 0; }
+.orb2 { width: 120px; height: 120px; background: rgba(61,184,138,0.10); bottom: 0; left: 0; }
 .slide-big-icon {
   font-size: 5rem; z-index: 2; animation: float 3s ease-in-out infinite;
   display: flex; align-items: center; justify-content: center;
@@ -154,10 +154,10 @@ function onTouchEnd(e: TouchEvent) {
 .slide-subtitle { font-size: 0.82rem; font-weight: 600; margin: 0 0 10px; }
 .slide-desc { font-size: 0.82rem; color: #666; line-height: 1.6; margin: 0; }
 .steps { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
-.step-item { font-size: 0.78rem; color: #555; background: #fafafa; padding: 8px 12px; border-radius: 10px; border-left: 3px solid #fd4376; }
+.step-item { font-size: 0.78rem; color: #555; background: #fafafa; padding: 8px 12px; border-radius: 10px; border-left: 3px solid #3DB88A; }
 .dots { display: flex; gap: 8px; padding: 12px 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; border: none; background: #eee; cursor: pointer; transition: all 0.3s; padding: 0; }
-.dot.active { width: 24px; border-radius: 4px; background: #fd4376; }
+.dot.active { width: 24px; border-radius: 4px; background: #3DB88A; }
 .nav-area {
   display: flex; align-items: center; justify-content: center;
   width: 100%; padding: 0 24px 16px; gap: 12px; box-sizing: border-box; position: relative;
@@ -171,7 +171,8 @@ function onTouchEnd(e: TouchEvent) {
 .nav-next {
   width: 200px; max-width: calc(100% - 80px); padding: 14px 0; color: white; border: none;
   border-radius: 50px; font-size: 0.95rem; font-weight: 700; cursor: pointer;
-  box-shadow: 0 6px 20px rgba(253,67,118,0.3); transition: all 0.2s; text-align: center;
+  background: linear-gradient(135deg, #3DB88A, #5ECFA8);
+  box-shadow: 0 6px 20px rgba(61,184,138,0.35); transition: all 0.2s; text-align: center;
 }
 .slide-enter-active, .slide-leave-active { transition: all 0.3s ease; }
 .slide-enter-from { opacity: 0; transform: translateX(30px); }

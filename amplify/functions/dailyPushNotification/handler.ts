@@ -91,7 +91,6 @@ export const handler = async (): Promise<void> => {
   console.log('[DailyPush] 起動');
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-  // ── 1. 全コスメを取得 ─────────────────────────────────────
   const cosmeticsRes = await dynamo.send(new ScanCommand({ TableName: process.env.COSMETIC_TABLE! }));
   type CosmeticItem = {
     id: string; owner: string; name: string;
@@ -103,7 +102,6 @@ export const handler = async (): Promise<void> => {
     (i: Record<string, AttributeValue>) => unmarshall(i) as CosmeticItem
   );
 
-  // ── 2. autoDeduct=true のコスメを自動減算 ─────────────────
   const autoDeductItems = cosmetics.filter(
     c => c.autoDeduct === true && c.lastDeductedAt !== today && c.currentAmount > 0
   );
@@ -123,7 +121,6 @@ export const handler = async (): Promise<void> => {
         }),
       }));
       console.log(`[DailyPush] 自動減算完了: ${item.name} ${item.currentAmount} → ${newAmount}`);
-      // 減算後のamountをitemに反映（通知判定用）
       // 通知判定のため減算後の値を反映
       item.currentAmount = newAmount;
     } catch (e) {
@@ -131,7 +128,6 @@ export const handler = async (): Promise<void> => {
     }
   }
 
-  // ── 3. UserSettings を取得して通知対象を絞る ──────────────
   const settingsRes = await dynamo.send(new ScanCommand({ TableName: process.env.SETTINGS_TABLE! }));
   type UserSetting = { owner: string; notifyTime: string; timezone: string; notifyEnabled: boolean };
   const allSettings = (settingsRes.Items ?? []).map(
@@ -148,7 +144,6 @@ export const handler = async (): Promise<void> => {
     return;
   }
 
-  // ── 4. 残量20%以下のコスメをチェック ─────────────────────
   const lowStockByOwner = new Map<string, string[]>();
   for (const item of cosmetics) {
     if (!targetOwners.has(item.owner)) continue;
@@ -164,7 +159,6 @@ export const handler = async (): Promise<void> => {
     return;
   }
 
-  // ── 5. APNs通知送信 ───────────────────────────────────────
   const subsRes = await dynamo.send(new ScanCommand({ TableName: process.env.SUBSCRIPTION_TABLE! }));
   type PushSub = { owner: string; endpoint: string };
   const subscriptions = (subsRes.Items ?? []).map(

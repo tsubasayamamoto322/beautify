@@ -1,7 +1,3 @@
-/**
- * amplify/backend.ts
- */
-
 import { defineBackend }                from '@aws-amplify/backend';
 import { auth }                         from './auth/resource';
 import { data }                         from './data/resource';
@@ -16,7 +12,6 @@ import { LambdaInvoke }                 from 'aws-cdk-lib/aws-scheduler-targets'
 
 const backend = defineBackend({ auth, data, storage, analyzeImage, dailyPushNotification, sendEmail });
 
-// ── sendEmail に SES 送信権限を付与 ──────────────────────────────
 backend.sendEmail.resources.lambda.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
@@ -25,13 +20,11 @@ backend.sendEmail.resources.lambda.addToRolePolicy(
   })
 );
 
-// ── analyze-image に S3 バケット名と読み取り権限を付与 ─────────────
 const s3Bucket = backend.storage.resources.bucket;
 
 backend.analyzeImage.addEnvironment('BUCKET_NAME', s3Bucket.bucketName);
 s3Bucket.grantRead(backend.analyzeImage.resources.lambda);
 
-// ── dailyPushNotification に DynamoDB 権限を付与 ──────────────────
 const tables = backend.data.resources.tables;
 const lambdaFn = backend.dailyPushNotification.resources.lambda;
 
@@ -43,7 +36,6 @@ tables['Cosmetic'].grantReadData(lambdaFn);
 tables['PushSubscription'].grantReadData(lambdaFn);
 tables['UserSettings'].grantReadData(lambdaFn);
 
-// ── EventBridge Scheduler：毎時 0 分に起動 ────────────────────────
 const stack = Stack.of(lambdaFn);
 
 new Schedule(stack, 'BeautifyHourlyCheck', {

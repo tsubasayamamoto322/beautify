@@ -5,10 +5,20 @@ html, body {
   width: 100% !important;
   max-width: 100vw !important;
   height: 100% !important;
+  font-family: 'Helvetica Neue', Arial, sans-serif !important;
 }
 
 * {
   box-sizing: border-box !important;
+}
+
+/* iOS Safari はフォーム要素にシステムフォントを強制するため明示的に上書き */
+input, select, button, textarea {
+  font-family: 'Helvetica Neue', Arial, sans-serif !important;
+}
+input, button, textarea {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .scrollable-collection {
