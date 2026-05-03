@@ -25,5 +25,5 @@ logs
 
 # amplify
 .amplify
-amplify_outputs*
+amplify_outputs.sandbox.json
 amplifyconfiguration*
