@@ -45,10 +45,10 @@ export const handler = async (event: any) => {
 function buildEmail(toEmail: string, type: string) {
   if (type === 'welcome') {
     return {
-      subject: '【Beautify】ご登録ありがとうございます 🌸',
+      subject: '【Beautify】ご登録ありがとうございます ✿',
       html: `
         <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff8fa;border-radius:24px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#fd4376,#ff8090);padding:40px 32px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#3DB88A,#5ECFA8);padding:40px 32px;text-align:center;">
             <div style="font-size:3rem;margin-bottom:8px;">✿</div>
             <h1 style="color:white;font-size:1.8rem;margin:0;font-family:Georgia,serif;">Beautify</h1>
             <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:0.9rem;">あなたのコスメを、賢く管理</p>
@@ -59,8 +59,8 @@ function buildEmail(toEmail: string, type: string) {
               Beautify へようこそ。<br>
               コスメの残量を記録して、なくなる前にお知らせします。
             </p>
-            <div style="background:white;border-radius:16px;padding:20px;border:1px solid #ffe0eb;margin-bottom:24px;">
-              <p style="margin:0 0 8px;font-weight:bold;color:#fd4376;">📷 まず最初にやること</p>
+            <div style="background:white;border-radius:16px;padding:20px;border:1px solid #B8E8D8;margin-bottom:24px;">
+              <p style="margin:0 0 8px;font-weight:bold;color:#3DB88A;">📷 まず最初にやること</p>
               <p style="margin:0;color:#666;font-size:0.9rem;line-height:1.6;">
                 コスメのパッケージを撮影するだけ。<br>
                 AIが自動でブランド名・容量を読み取ります。
@@ -76,7 +76,7 @@ function buildEmail(toEmail: string, type: string) {
       subject: '【Beautify】パスワードが変更されました 🔐',
       html: `
         <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;background:#fff8fa;border-radius:24px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#fd4376,#ff8090);padding:40px 32px;text-align:center;">
+          <div style="background:linear-gradient(135deg,#3DB88A,#5ECFA8);padding:40px 32px;text-align:center;">
             <div style="font-size:3rem;margin-bottom:8px;">✿</div>
             <h1 style="color:white;font-size:1.8rem;margin:0;font-family:Georgia,serif;">Beautify</h1>
           </div>
