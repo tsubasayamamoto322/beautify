@@ -144,17 +144,21 @@ export const handler = async (): Promise<void> => {
     return;
   }
 
-  const lowStockByOwner = new Map<string, string[]>();
-  for (const item of cosmetics) {
+  // 当日に自動減算されたアイテムのみを通知対象にする（蓄積防止）
+  const lowStockByOwner = new Map<string, number>(); // 残り少ない件数
+  const emptyByOwner    = new Map<string, number>(); // なくなった件数
+
+  for (const item of autoDeductItems) {
     if (!targetOwners.has(item.owner)) continue;
-    if (!item.totalCapacity || item.currentAmount == null) continue;
-    if (item.currentAmount / item.totalCapacity <= LOW_STOCK_THRESHOLD) {
-      if (!lowStockByOwner.has(item.owner)) lowStockByOwner.set(item.owner, []);
-      lowStockByOwner.get(item.owner)!.push(item.name);
+    if (!item.totalCapacity) continue;
+    if (item.currentAmount === 0) {
+      emptyByOwner.set(item.owner, (emptyByOwner.get(item.owner) ?? 0) + 1);
+    } else if (item.currentAmount / item.totalCapacity <= LOW_STOCK_THRESHOLD) {
+      lowStockByOwner.set(item.owner, (lowStockByOwner.get(item.owner) ?? 0) + 1);
     }
   }
 
-  if (lowStockByOwner.size === 0) {
+  if (lowStockByOwner.size === 0 && emptyByOwner.size === 0) {
     console.log('[DailyPush] 残量アラート対象なし。終了。');
     return;
   }
@@ -170,17 +174,30 @@ export const handler = async (): Promise<void> => {
   await new Promise(r => apnsClient.on('connect', r));
 
   const sends: Promise<void>[] = [];
-  for (const [owner, itemNames] of lowStockByOwner.entries()) {
+  const allOwners = new Set([...lowStockByOwner.keys(), ...emptyByOwner.keys()]);
+
+  for (const owner of allOwners) {
     const userSubs = subscriptions.filter(s => s.owner === owner);
     if (!userSubs.length) continue;
-    const title = '⚠️ Beautify - 残量アラート';
-    const body  = `${itemNames.join('、')} がもうすぐなくなります`;
+
+    const lowCount   = lowStockByOwner.get(owner) ?? 0;
+    const emptyCount = emptyByOwner.get(owner) ?? 0;
+
     for (const sub of userSubs) {
-      sends.push(
-        sendApnsWithClient(sub.endpoint, title, body, jwt, apnsClient)
-          .then(() => console.log(`[DailyPush] 送信成功 owner=${owner}`))
-          .catch(err => console.error(`[DailyPush] 送信失敗 owner=${owner}:`, err.message))
-      );
+      if (lowCount > 0) {
+        sends.push(
+          sendApnsWithClient(sub.endpoint, 'Beautify', `${lowCount}つのコスメがもうすぐなくなります`, jwt, apnsClient)
+            .then(() => console.log(`[DailyPush] 残り少ない通知成功 owner=${owner}`))
+            .catch(err => console.error(`[DailyPush] 送信失敗 owner=${owner}:`, err.message))
+        );
+      }
+      if (emptyCount > 0) {
+        sends.push(
+          sendApnsWithClient(sub.endpoint, 'Beautify', `${emptyCount}つのコスメがなくなりました`, jwt, apnsClient)
+            .then(() => console.log(`[DailyPush] なくなった通知成功 owner=${owner}`))
+            .catch(err => console.error(`[DailyPush] 送信失敗 owner=${owner}:`, err.message))
+        );
+      }
     }
   }
 
