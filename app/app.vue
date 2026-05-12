@@ -27,6 +27,8 @@ const newEmail = ref('');
 const newPassword = ref('');
 const accountMsg = ref('');
 const isUpdatingAccount = ref(false);
+const showDeleteConfirm = ref(false);
+const isDeletingAccount = ref(false);
 
 async function changeEmail() {
   isUpdatingAccount.value = true;
@@ -52,6 +54,31 @@ async function changePassword() {
   } catch (e: any) {
     accountMsg.value = '❌ ' + (e.message ?? '変更に失敗しました');
   } finally { isUpdatingAccount.value = false; }
+}
+
+async function deleteAccount() {
+  isDeletingAccount.value = true;
+  accountMsg.value = '';
+  try {
+    const { data: cosmeticsList } = await client.models.Cosmetic.list();
+    for (const item of cosmeticsList) await client.models.Cosmetic.delete({ id: item.id });
+
+    const { data: subsList } = await client.models.PushSubscription.list();
+    for (const sub of subsList) await client.models.PushSubscription.delete({ id: sub.id });
+
+    const { data: settingsList } = await client.models.UserSettings.list();
+    for (const s of settingsList) await client.models.UserSettings.delete({ id: s.id });
+
+    const { deleteUser } = await import('aws-amplify/auth');
+    await deleteUser();
+
+    isSignedIn.value = false;
+    showAccountModal.value = false;
+    showDeleteConfirm.value = false;
+  } catch (e: any) {
+    accountMsg.value = '❌ ' + (e.message ?? 'アカウント削除に失敗しました');
+    isDeletingAccount.value = false;
+  }
 }
 
 const showAddModal = ref(false);
@@ -863,6 +890,23 @@ async function deleteCosmetic(id: string) {
               <button class="submit-btn" style="margin-top:8px" @click="changePassword" :disabled="!newPassword || isUpdatingAccount">変更する</button>
             </div>
             <div v-if="accountMsg" class="account-msg">{{ accountMsg }}</div>
+            <div class="delete-account-section">
+              <div v-if="!showDeleteConfirm">
+                <button class="delete-account-btn" @click="showDeleteConfirm = true">
+                  アカウントを削除する
+                </button>
+              </div>
+              <div v-else class="delete-confirm-box">
+                <p class="delete-confirm-msg">⚠️ この操作は取り消せません。登録したコスメや設定もすべて削除されます。</p>
+                <div class="delete-confirm-actions">
+                  <button class="delete-cancel-btn" @click="showDeleteConfirm = false" :disabled="isDeletingAccount">キャンセル</button>
+                  <button class="delete-execute-btn" @click="deleteAccount" :disabled="isDeletingAccount">
+                    <span v-if="isDeletingAccount" class="mini-spinner"></span>
+                    <span v-else>削除する</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1140,4 +1184,13 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 .days-btn.active { background: #E8F7F3; border-color: #3DB88A; color: #3DB88A; font-weight: 700; }
 
 .account-msg { text-align: center; font-size: 0.85rem; margin-top: 12px; color: #555; }
+.delete-account-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.delete-account-btn { width: 100%; background: none; border: 1.5px solid #ffcdd2; border-radius: 50px; padding: 12px; font-size: 0.88rem; color: #e53935; cursor: pointer; transition: all 0.2s; }
+.delete-account-btn:active { background: #fff5f5; }
+.delete-confirm-box { background: #fff5f5; border-radius: 16px; padding: 16px; }
+.delete-confirm-msg { font-size: 0.82rem; color: #c62828; line-height: 1.6; margin: 0 0 14px; }
+.delete-confirm-actions { display: flex; gap: 10px; }
+.delete-cancel-btn { flex: 1; background: #f5f5f5; border: none; border-radius: 50px; padding: 12px; font-size: 0.88rem; color: #666; cursor: pointer; }
+.delete-execute-btn { flex: 1; background: #e53935; border: none; border-radius: 50px; padding: 12px; font-size: 0.88rem; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.delete-execute-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
