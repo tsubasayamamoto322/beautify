@@ -555,11 +555,11 @@ async function deleteCosmetic(id: string) {
           </div>
 
           <transition name="fade">
-            <div v-if="showAddModal" class="modal-overlay" @click.self="closeAddModal">
+            <div v-if="showAddModal" class="modal-overlay" @click.self="closeAddModal()">
               <div class="modal-card">
                 <div class="modal-header">
                   <h2>コスメを追加</h2>
-                  <button class="modal-close" @click="closeAddModal">✕</button>
+                  <button class="modal-close" @click="closeAddModal()">✕</button>
                 </div>
                 <div class="form-body">
                   <div class="upload-area">
