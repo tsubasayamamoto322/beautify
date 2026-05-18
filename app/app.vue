@@ -15,6 +15,16 @@ const client = generateClient<Schema>();
 
 const LOW_STOCK_THRESHOLD = 0.20;
 const isSignedIn = ref(false);
+const isGuest = ref(false);
+
+const GUEST_KEY = 'beautify_guest_cosmetics';
+function getGuestCosmetics(): any[] {
+  try { return JSON.parse(localStorage.getItem(GUEST_KEY) ?? '[]'); } catch { return []; }
+}
+function saveGuestCosmetics(items: any[]) {
+  localStorage.setItem(GUEST_KEY, JSON.stringify(items));
+}
+function guestId() { return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
 const deviceToken = ref<string>('');
 const showTutorial = ref(false);
 const showDrawer = ref(false);
@@ -179,7 +189,14 @@ async function initPushNotifications() {
   });
 }
 
+function handleGuestMode() {
+  isGuest.value = true;
+  checkFirstLaunch();
+  listCosmetics();
+}
+
 async function handleSignedIn() {
+  isGuest.value = false;
   isSignedIn.value = true;
   checkFirstLaunch();
   await initPushNotifications();
@@ -188,6 +205,12 @@ async function handleSignedIn() {
 }
 
 async function handleSignOut() {
+  if (isGuest.value) {
+    isGuest.value = false;
+    cosmetics.value = [];
+    showDrawer.value = false;
+    return;
+  }
   const { signOut } = await import('aws-amplify/auth');
   await signOut();
   isSignedIn.value = false;
@@ -346,6 +369,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 async function loadUserSettings() {
+  if (isGuest.value) return;
   const { data: settings } = await client.models.UserSettings.list();
   if (settings.length > 0) {
     const s = settings[0];
@@ -359,6 +383,7 @@ async function loadUserSettings() {
 }
 
 async function saveSettings() {
+  if (isGuest.value) return;
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const notifyTime = `${String(notifyHour.value).padStart(2, '0')}:00`;
   try {
@@ -399,6 +424,10 @@ onMounted(async () => {
 });
 
 async function listCosmetics() {
+  if (isGuest.value) {
+    cosmetics.value = getGuestCosmetics();
+    return;
+  }
   const { data: items } = await client.models.Cosmetic.list();
   cosmetics.value = items;
 }
@@ -409,6 +438,7 @@ async function onFileChange(e: Event) {
   const file = target.files[0];
   imageFile.value = file;
   previewUrl.value = URL.createObjectURL(file);
+  if (isGuest.value) return;
   isAnalyzing.value = true;
   try {
     const filename = `${Date.now()}-${file.name}`;
@@ -431,6 +461,27 @@ async function onFileChange(e: Event) {
 
 async function createCosmetic() {
   if (!name.value || !totalCapacity.value) { alert('商品名と容量は必須です'); return; }
+
+  if (isGuest.value) {
+    const items = getGuestCosmetics();
+    items.push({
+      id: guestId(),
+      name: name.value,
+      totalCapacity: parseFloat(totalCapacity.value),
+      currentAmount: parseFloat(totalCapacity.value),
+      usagePerApp: parseFloat(usagePerApp.value) || 0,
+      timesPerDay: parseFloat(timesPerDay.value) || 2,
+      autoDeduct: false,
+    });
+    saveGuestCosmetics(items);
+    name.value = ''; totalCapacity.value = ''; usagePerApp.value = ''; timesPerDay.value = '2';
+    imageFile.value = null; previewUrl.value = null; uploadedImagePath.value = '';
+    showAddModal.value = false;
+    showToast('✅ コスメを登録しました！');
+    listCosmetics();
+    return;
+  }
+
   let finalImagePath = uploadedImagePath.value;
   if (!finalImagePath && imageFile.value) {
     const filename = `${Date.now()}-${imageFile.value.name}`;
@@ -452,10 +503,19 @@ async function createCosmetic() {
   listCosmetics();
 }
 
-async function recordUsage(item: Schema['Cosmetic']['type']) {
+async function recordUsage(item: any) {
   const usage = item.usagePerApp ?? 0;
   if (!usage) { alert('1回分の使用量が設定されていません'); return; }
   const newAmount = Math.max(0, item.currentAmount - usage);
+
+  if (isGuest.value) {
+    const items = getGuestCosmetics();
+    const idx = items.findIndex((i: any) => i.id === item.id);
+    if (idx !== -1) { items[idx].currentAmount = newAmount; saveGuestCosmetics(items); }
+    await listCosmetics();
+    return;
+  }
+
   const newRatio  = newAmount / item.totalCapacity;
   updatingId.value = item.id;
   try {
@@ -473,23 +533,32 @@ async function recordUsage(item: Schema['Cosmetic']['type']) {
 }
 
 async function toggleAutoDeduct(item: any) {
-  await client.models.Cosmetic.update({
-    id: item.id,
-    autoDeduct: !item.autoDeduct,
-  });
+  if (isGuest.value) {
+    const items = getGuestCosmetics();
+    const idx = items.findIndex((i: any) => i.id === item.id);
+    if (idx !== -1) { items[idx].autoDeduct = !item.autoDeduct; saveGuestCosmetics(items); }
+    await listCosmetics();
+    return;
+  }
+  await client.models.Cosmetic.update({ id: item.id, autoDeduct: !item.autoDeduct });
   await listCosmetics();
 }
 
 
 async function deleteCosmetic(id: string) {
   if (!confirm('削除しますか？')) return;
+  if (isGuest.value) {
+    saveGuestCosmetics(getGuestCosmetics().filter((i: any) => i.id !== id));
+    listCosmetics();
+    return;
+  }
   await client.models.Cosmetic.delete({ id });
   listCosmetics();
 }
 </script>
 
 <template>
-  <LoginView v-if="!isSignedIn" @signed-in="handleSignedIn" />
+  <LoginView v-if="!isSignedIn && !isGuest" @signed-in="handleSignedIn" @guest="handleGuestMode" />
   <template v-else>
     <TutorialView v-if="showTutorial" @close="closeTutorial" />
     <div v-show="!showTutorial" class="app-container">
@@ -509,6 +578,17 @@ async function deleteCosmetic(id: string) {
 
         <main class="main-content">
 
+          <div v-if="isGuest" class="guest-banner">
+            <div class="guest-banner-left">
+              <span class="guest-banner-icon">👤</span>
+              <div>
+                <div class="guest-banner-title">ゲストモード</div>
+                <div class="guest-banner-sub">データはこのデバイスにのみ保存されます</div>
+              </div>
+            </div>
+            <button class="guest-signup-btn" @click="showDrawer = true">登録 →</button>
+          </div>
+
           <transition name="slide-down">
             <div v-if="lowStockItems.length" class="alert-banner">
               <div class="alert-pulse"></div>
@@ -521,7 +601,7 @@ async function deleteCosmetic(id: string) {
             </div>
           </transition>
 
-          <div class="notify-panel" :class="{ 'notify-panel--active': notificationPermission === 'granted' }">
+          <div v-if="!isGuest" class="notify-panel" :class="{ 'notify-panel--active': notificationPermission === 'granted' }">
             <div class="notify-panel-left">
               <span class="notify-icon">🕐</span>
               <div class="notify-label">
@@ -811,19 +891,27 @@ async function deleteCosmetic(id: string) {
               <span>使い方</span>
               <span class="drawer-item-arrow">›</span>
             </button>
-            <button class="drawer-item" @click="showDrawer = false; showNotifyModal = true">
-              <span class="drawer-item-icon"></span>
-              <span>通知設定</span>
-              <span class="drawer-item-status">{{ notificationPermission === 'granted' ? 'ON' : 'OFF' }}</span>
-              <span class="drawer-item-arrow">›</span>
-            </button>
-            <button class="drawer-item" @click="showDrawer = false; showAccountModal = true">
-              <span class="drawer-item-icon"></span>
-              <span>ログイン情報変更</span>
-              <span class="drawer-item-arrow">›</span>
-            </button>
+            <template v-if="!isGuest">
+              <button class="drawer-item" @click="showDrawer = false; showNotifyModal = true">
+                <span class="drawer-item-icon"></span>
+                <span>通知設定</span>
+                <span class="drawer-item-status">{{ notificationPermission === 'granted' ? 'ON' : 'OFF' }}</span>
+                <span class="drawer-item-arrow">›</span>
+              </button>
+              <button class="drawer-item" @click="showDrawer = false; showAccountModal = true">
+                <span class="drawer-item-icon"></span>
+                <span>ログイン情報変更</span>
+                <span class="drawer-item-arrow">›</span>
+              </button>
+            </template>
             <div class="drawer-divider"></div>
-            <button class="drawer-item danger" @click="showDrawer = false; handleSignOut()">
+            <template v-if="isGuest">
+              <div class="guest-drawer-cta">
+                <p class="guest-drawer-cta-text">アカウント登録でデータをクラウドに保存し、通知機能も使えます。</p>
+                <button class="guest-drawer-cta-btn" @click="handleSignOut()">登録 / ログインへ</button>
+              </div>
+            </template>
+            <button v-else class="drawer-item danger" @click="showDrawer = false; handleSignOut()">
               <span class="drawer-item-icon"></span>
               <span>ログアウト</span>
             </button>
@@ -1193,4 +1281,15 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 .delete-cancel-btn { flex: 1; background: #f5f5f5; border: none; border-radius: 50px; padding: 12px; font-size: 0.88rem; color: #666; cursor: pointer; }
 .delete-execute-btn { flex: 1; background: #e53935; border: none; border-radius: 50px; padding: 12px; font-size: 0.88rem; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .delete-execute-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.guest-banner { display: flex; align-items: center; justify-content: space-between; background: #FFF9E6; border: 1.5px solid #FFE082; border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; gap: 12px; }
+.guest-banner-left { display: flex; align-items: center; gap: 10px; }
+.guest-banner-icon { font-size: 1.2rem; flex-shrink: 0; }
+.guest-banner-title { font-size: 0.82rem; font-weight: 700; color: #7A5C00; }
+.guest-banner-sub { font-size: 0.72rem; color: #A07800; margin-top: 2px; }
+.guest-signup-btn { background: #3DB88A; color: white; border: none; border-radius: 20px; padding: 7px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+.guest-drawer-cta { padding: 16px 20px; }
+.guest-drawer-cta-text { font-size: 0.82rem; color: #666; line-height: 1.6; margin: 0 0 12px; }
+.guest-drawer-cta-btn { width: 100%; background: linear-gradient(135deg, #3DB88A, #5ECFA8); color: white; border: none; border-radius: 50px; padding: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
 </style>

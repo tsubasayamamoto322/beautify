@@ -35,7 +35,7 @@ const isLoading    = ref(false);
 const errorMsg     = ref('');
 const successMsg   = ref('');
 
-const emit = defineEmits(['signed-in']);
+const emit = defineEmits(['signed-in', 'guest']);
 
 function clearMessages() { errorMsg.value = ''; successMsg.value = ''; }
 
@@ -168,6 +168,8 @@ async function handleForgotConfirm() {
           <span class="divider">|</span>
           <button type="button" @click="mode = 'signup'; clearMessages()">新規登録</button>
         </div>
+        <div class="guest-divider"><span>または</span></div>
+        <button type="button" class="guest-btn" @click="emit('guest')">ゲストとして使う</button>
       </form>
 
       <form v-else-if="mode === 'signup'" @submit.prevent="handleSignUp" class="auth-form">
@@ -435,6 +437,21 @@ async function handleForgotConfirm() {
   text-decoration: underline; text-underline-offset: 2px;
 }
 .divider { color: #ddd; font-size: 0.8rem; }
+
+.guest-divider {
+  display: flex; align-items: center; gap: 10px;
+  color: #ccc; font-size: 0.75rem; margin: 2px 0;
+}
+.guest-divider::before, .guest-divider::after {
+  content: ''; flex: 1; height: 1px; background: #eee;
+}
+.guest-btn {
+  width: 100%; padding: 13px; background: none;
+  border: 1.5px solid #ddd; border-radius: 50px;
+  font-size: 0.88rem; color: #888; cursor: pointer;
+  transition: all 0.2s; -webkit-appearance: none; appearance: none;
+}
+.guest-btn:active { background: #f8f8f8; }
 
 /* ── メッセージ ── */
 .msg { font-size: 0.78rem; padding: 10px 14px; border-radius: 10px; text-align: center; line-height: 1.4; }
