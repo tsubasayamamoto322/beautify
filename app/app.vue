@@ -581,7 +581,7 @@ async function deleteCosmetic(id: string) {
           <div v-if="isGuest" class="guest-banner">
             <div class="guest-banner-left">
               <span class="guest-banner-icon">👤</span>
-              <div>
+              <div class="guest-banner-text">
                 <div class="guest-banner-title">ゲストモード</div>
                 <div class="guest-banner-sub">データはこのデバイスにのみ保存されます</div>
               </div>
@@ -1282,11 +1282,12 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 .delete-execute-btn { flex: 1; background: #e53935; border: none; border-radius: 50px; padding: 12px; font-size: 0.88rem; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .delete-execute-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.guest-banner { display: flex; align-items: center; justify-content: space-between; background: #FFF9E6; border: 1.5px solid #FFE082; border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; gap: 12px; }
-.guest-banner-left { display: flex; align-items: center; gap: 10px; }
+.guest-banner { display: flex; align-items: center; justify-content: space-between; background: #FFF9E6; border: 1.5px solid #FFE082; border-radius: 14px; padding: 12px 16px; margin-bottom: 20px; gap: 12px; }
+.guest-banner-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .guest-banner-icon { font-size: 1.2rem; flex-shrink: 0; }
+.guest-banner-text { min-width: 0; }
 .guest-banner-title { font-size: 0.82rem; font-weight: 700; color: #7A5C00; }
-.guest-banner-sub { font-size: 0.72rem; color: #A07800; margin-top: 2px; }
+.guest-banner-sub { font-size: 0.72rem; color: #A07800; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guest-signup-btn { background: #3DB88A; color: white; border: none; border-radius: 20px; padding: 7px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 
 .guest-drawer-cta { padding: 16px 20px; }

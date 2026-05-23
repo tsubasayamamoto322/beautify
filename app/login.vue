@@ -294,16 +294,17 @@ async function handleForgotConfirm() {
 <style scoped>
 /* ── 背景 ── */
 .auth-container {
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: #fff8fa;
   position: fixed;
   inset: 0;
-  overflow: hidden;
-  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: max(env(safe-area-inset-top), 32px) 20px max(env(safe-area-inset-bottom), 32px);
   font-family: 'Helvetica Neue', Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -331,6 +332,7 @@ async function handleForgotConfirm() {
     0 4px 20px rgba(0,0,0,0.04);
   position: relative;
   z-index: 1;
+  flex-shrink: 0;
 }
 
 /* ── ロゴ ── */
