@@ -37,6 +37,17 @@ const successMsg   = ref('');
 
 const emit = defineEmits(['signed-in', 'guest']);
 
+function getPasswordPolicyError(pwd: string): string | null {
+  const missing: string[] = [];
+  if (pwd.length < 8)            missing.push('8文字以上');
+  if (!/[A-Z]/.test(pwd))        missing.push('大文字（A〜Z）');
+  if (!/[a-z]/.test(pwd))        missing.push('小文字（a〜z）');
+  if (!/[0-9]/.test(pwd))        missing.push('数字（0〜9）');
+  if (!/[^A-Za-z0-9]/.test(pwd)) missing.push('記号（!@#$ など）');
+  if (missing.length === 0) return null;
+  return `パスワードには次が必要です：${missing.join('、')}`;
+}
+
 function clearMessages() { errorMsg.value = ''; successMsg.value = ''; }
 
 // ── ログイン ─────────────────────────────────────────────────────
@@ -62,6 +73,8 @@ async function handleLogin() {
 // ── 新規登録 ─────────────────────────────────────────────────────
 async function handleSignUp() {
   clearMessages();
+  const policyError = getPasswordPolicyError(password.value);
+  if (policyError) { errorMsg.value = policyError; return; }
   isLoading.value = true;
   try {
     await signUp({ username: email.value, password: password.value,
@@ -103,6 +116,8 @@ async function handleForgot() {
 
 async function handleForgotConfirm() {
   clearMessages();
+  const policyError = getPasswordPolicyError(newPassword.value);
+  if (policyError) { errorMsg.value = policyError; return; }
   isLoading.value = true;
   try {
     await confirmResetPassword({ username: email.value, confirmationCode: confirmCode.value, newPassword: newPassword.value });

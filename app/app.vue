@@ -53,7 +53,20 @@ async function changeEmail() {
   } finally { isUpdatingAccount.value = false; }
 }
 
+function getPasswordPolicyError(pwd: string): string | null {
+  const missing: string[] = [];
+  if (pwd.length < 8)           missing.push('8文字以上');
+  if (!/[A-Z]/.test(pwd))       missing.push('大文字（A〜Z）');
+  if (!/[a-z]/.test(pwd))       missing.push('小文字（a〜z）');
+  if (!/[0-9]/.test(pwd))       missing.push('数字（0〜9）');
+  if (!/[^A-Za-z0-9]/.test(pwd)) missing.push('記号（!@#$ など）');
+  if (missing.length === 0) return null;
+  return `パスワードには次が必要です：${missing.join('、')}`;
+}
+
 async function changePassword() {
+  const policyError = getPasswordPolicyError(newPassword.value);
+  if (policyError) { accountMsg.value = '❌ ' + policyError; return; }
   isUpdatingAccount.value = true;
   accountMsg.value = '';
   try {
@@ -62,7 +75,14 @@ async function changePassword() {
     accountMsg.value = '✅ パスワードを変更しました';
     newPassword.value = '';
   } catch (e: any) {
-    accountMsg.value = '❌ ' + (e.message ?? '変更に失敗しました');
+    const msg: string = e.message ?? '';
+    if (msg.includes('policy') || msg.includes('InvalidPassword')) {
+      accountMsg.value = '❌ ' + (getPasswordPolicyError(newPassword.value) ?? 'パスワードがポリシーを満たしていません');
+    } else if (msg.includes('NotAuthorizedException') || msg.includes('Incorrect')) {
+      accountMsg.value = '❌ 現在のパスワードが違います';
+    } else {
+      accountMsg.value = '❌ ' + (msg || '変更に失敗しました');
+    }
   } finally { isUpdatingAccount.value = false; }
 }
 
