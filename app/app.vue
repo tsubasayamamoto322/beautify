@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import LoginView from './login.vue';
 import TutorialView from './tutorial.vue';
 import { Amplify } from "aws-amplify";
@@ -210,7 +210,8 @@ async function initPushNotifications() {
 }
 
 async function forceRepaint() {
-  await nextTick();
+  await new Promise(resolve => setTimeout(resolve, 400));
+  window.scrollTo(0, 0);
   const el = document.querySelector('.app-container') as HTMLElement | null;
   if (el) { el.style.display = 'none'; el.offsetHeight; el.style.display = ''; }
 }
