@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import LoginView from './login.vue';
 import TutorialView from './tutorial.vue';
 import { Amplify } from "aws-amplify";
@@ -209,8 +209,15 @@ async function initPushNotifications() {
   });
 }
 
+async function forceRepaint() {
+  await nextTick();
+  const el = document.querySelector('.app-container') as HTMLElement | null;
+  if (el) { el.style.display = 'none'; el.offsetHeight; el.style.display = ''; }
+}
+
 function handleGuestMode() {
   isGuest.value = true;
+  forceRepaint();
   checkFirstLaunch();
   listCosmetics();
 }
@@ -218,6 +225,7 @@ function handleGuestMode() {
 async function handleSignedIn() {
   isGuest.value = false;
   isSignedIn.value = true;
+  await forceRepaint();
   checkFirstLaunch();
   await initPushNotifications();
   await listCosmetics();
