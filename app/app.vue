@@ -209,16 +209,8 @@ async function initPushNotifications() {
   });
 }
 
-async function forceRepaint() {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  window.scrollTo(0, 0);
-  const el = document.querySelector('.app-container') as HTMLElement | null;
-  if (el) { el.style.display = 'none'; el.offsetHeight; el.style.display = ''; }
-}
-
 function handleGuestMode() {
   isGuest.value = true;
-  forceRepaint();
   checkFirstLaunch();
   listCosmetics();
 }
@@ -228,7 +220,6 @@ async function handleSignedIn() {
   isSignedIn.value = true;
   checkFirstLaunch();
   await initPushNotifications();
-  await forceRepaint();
   await listCosmetics();
   await loadSettings();
 }
@@ -448,6 +439,15 @@ async function saveNotifyHour() {
 }
 
 onMounted(async () => {
+  // env(safe-area-inset-top)をJSで一度測定しCSS変数に固定
+  // キーボード操作後にiOSが誤った値を返す問題を回避する
+  const tmp = document.createElement('div');
+  tmp.style.cssText = 'position:fixed;top:env(safe-area-inset-top);width:1px;height:1px;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(tmp);
+  const sat = tmp.getBoundingClientRect().top;
+  document.body.removeChild(tmp);
+  document.documentElement.style.setProperty('--sat', `${sat}px`);
+
   await initServiceWorker();
   await Promise.all([listCosmetics(), loadUserSettings()]);
 });
@@ -1111,7 +1111,7 @@ async function deleteCosmetic(id: string) {
 
 .app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4FCFA; position: fixed; inset: 0; color: #333; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
 
-.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; flex-shrink: 0; padding-top: env(safe-area-inset-top); }
+.sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; flex-shrink: 0; padding-top: var(--sat, 0px); }
 .header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; min-height: 44px; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .logo { font-family: 'Georgia', serif; font-size: 1.5rem; color: #3DB88A; margin: 0; font-weight: bold; }
