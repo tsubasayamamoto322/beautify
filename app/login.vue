@@ -317,6 +317,7 @@ async function handleForgotConfirm() {
   background: #fff8fa;
   position: fixed;
   inset: 0;
+  z-index: 500;
   overflow-y: auto;
   overflow-x: hidden;
   padding: max(env(safe-area-inset-top), 32px) 20px max(env(safe-area-inset-bottom), 32px);

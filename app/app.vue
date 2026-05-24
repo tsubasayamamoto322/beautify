@@ -579,9 +579,8 @@ async function deleteCosmetic(id: string) {
 
 <template>
   <LoginView v-if="!isSignedIn && !isGuest" @signed-in="handleSignedIn" @guest="handleGuestMode" />
-  <template v-else>
-    <TutorialView v-if="showTutorial" @close="closeTutorial" />
-    <div class="app-container">
+  <TutorialView v-if="showTutorial" @close="closeTutorial" />
+  <div class="app-container">
 
         <header class="sticky-header">
           <div class="header-content">
@@ -1020,7 +1019,6 @@ async function deleteCosmetic(id: string) {
       </div>
     </transition>
 
-  </template>
 </template>
 
 <style scoped>
