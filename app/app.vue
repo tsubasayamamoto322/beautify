@@ -226,9 +226,9 @@ function handleGuestMode() {
 async function handleSignedIn() {
   isGuest.value = false;
   isSignedIn.value = true;
-  await forceRepaint();
   checkFirstLaunch();
   await initPushNotifications();
+  await forceRepaint();
   await listCosmetics();
   await loadSettings();
 }
