@@ -1112,7 +1112,7 @@ async function deleteCosmetic(id: string) {
 .app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4FCFA; position: fixed; inset: 0; color: #333; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
 
 .sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; flex-shrink: 0; padding-top: var(--sat, 0px); }
-.header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; min-height: 44px; }
+.header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 8px 20px; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .logo { font-family: 'Georgia', serif; font-size: 1.5rem; color: #3DB88A; margin: 0; font-weight: bold; }
 .icon-btn { background: none; border: 1px solid #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; color: #666; cursor: pointer; }
