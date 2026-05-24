@@ -1062,7 +1062,7 @@ async function deleteCosmetic(id: string) {
 .toast-enter-active, .toast-leave-active { transition: all 0.3s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
 
-.fab-container { padding: 12px 20px; padding-bottom: max(34px, env(safe-area-inset-bottom)); background: #F4FCFA; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; box-sizing: border-box; }
+.fab-container { padding-top: 12px; padding-right: 20px; padding-left: 20px; padding-bottom: 44px; background: #F4FCFA; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; box-sizing: border-box; }
 .add-fab {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; margin: 0;
