@@ -1062,7 +1062,7 @@ async function deleteCosmetic(id: string) {
 .toast-enter-active, .toast-leave-active { transition: all 0.3s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
 
-.fab-container { padding: 12px 20px; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: #F4FCFA; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; box-sizing: border-box; }
+.fab-container { padding: 12px 20px; background: #F4FCFA; border-top: 1px solid #f0f0f0; flex-shrink: 0; width: 100%; box-sizing: border-box; }
 .add-fab {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; margin: 0;
@@ -1102,7 +1102,7 @@ async function deleteCosmetic(id: string) {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4FCFA; height: 100dvh; max-height: 100dvh; color: #333; overflow: hidden; width: 100%; display: flex; flex-direction: column; }
+.app-container { font-family: 'Helvetica Neue', Arial, sans-serif; background: #F4FCFA; height: 100dvh; max-height: 100dvh; color: #333; overflow: hidden; width: 100%; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
 
 .sticky-header { position: sticky; top: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.06); z-index: 100; flex-shrink: 0; padding-top: env(safe-area-inset-top); }
 .header-content { max-width: 600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
