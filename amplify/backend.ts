@@ -19,7 +19,7 @@ backend.sendEmail.resources.lambda.addToRolePolicy(
     resources: ['*'],
   })
 );
-backend.sendEmail.addEnvironment('SES_FROM_EMAIL', 'tsubasa322322@gmail.com');
+backend.sendEmail.addEnvironment('SES_FROM_EMAIL', 'mailaddress');
 
 const s3Bucket = backend.storage.resources.bucket;
 
